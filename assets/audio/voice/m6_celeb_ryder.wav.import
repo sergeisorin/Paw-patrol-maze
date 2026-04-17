@@ -1,0 +1,23 @@
+[remap]
+
+importer="wav"
+type="AudioStreamSample"
+path="res://.import/m6_celeb_ryder.wav-d219175d8901fb7a9d67392c0322ff6e.sample"
+
+[deps]
+
+source_file="res://assets/audio/voice/m6_celeb_ryder.wav"
+dest_files=[ "res://.import/m6_celeb_ryder.wav-d219175d8901fb7a9d67392c0322ff6e.sample" ]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=0
