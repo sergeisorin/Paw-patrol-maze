@@ -9,11 +9,20 @@ func _ready() -> void:
 	_build_ui()
 
 func _build_ui() -> void:
-	var bg = ColorRect.new()
-	bg.color = Color(0.2, 0.35, 0.55)
-	bg.anchor_right = 1.0
-	bg.anchor_bottom = 1.0
-	add_child(bg)
+	var bg_tex = load("res://assets/sprites/ui/menu_background.png")
+	if bg_tex:
+		var bg_sprite = TextureRect.new()
+		bg_sprite.texture = bg_tex
+		bg_sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		bg_sprite.anchor_right = 1.0
+		bg_sprite.anchor_bottom = 1.0
+		add_child(bg_sprite)
+	else:
+		var bg = ColorRect.new()
+		bg.color = Color(0.2, 0.35, 0.55)
+		bg.anchor_right = 1.0
+		bg.anchor_bottom = 1.0
+		add_child(bg)
 
 	var vbox = VBoxContainer.new()
 	vbox.anchor_left = 0.2
@@ -23,15 +32,25 @@ func _build_ui() -> void:
 	vbox.alignment = VBoxContainer.ALIGN_CENTER
 	add_child(vbox)
 
+	var logo_tex = load("res://assets/sprites/ui/paw_patrol_logo.png")
+	if logo_tex:
+		var logo = TextureRect.new()
+		logo.texture = logo_tex
+		logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		logo.rect_min_size = Vector2(400, 250)
+		vbox.add_child(logo)
+
+	var subtitle_panel = _make_text_panel()
+	vbox.add_child(subtitle_panel)
 	_title_label = Label.new()
-	_title_label.text = "PAW PATROL\nМАЗЕ ADVENTURE"
+	_title_label.text = "MAZE ADVENTURE"
 	_title_label.align = Label.ALIGN_CENTER
-	_title_label.add_font_override("font", GameManager.make_font(56))
-	_title_label.add_color_override("font_color", Color(1.0, 0.9, 0.3))
-	vbox.add_child(_title_label)
+	_title_label.add_font_override("font", GameManager.make_font(40))
+	_title_label.add_color_override("font_color", Color.white)
+	subtitle_panel.add_child(_title_label)
 
 	var spacer = Control.new()
-	spacer.rect_min_size = Vector2(0, 30)
+	spacer.rect_min_size = Vector2(0, 20)
 	vbox.add_child(spacer)
 
 	_play_button = Button.new()
@@ -44,19 +63,39 @@ func _build_ui() -> void:
 	_play_button.grab_focus()
 
 	var spacer2 = Control.new()
-	spacer2.rect_min_size = Vector2(0, 20)
+	spacer2.rect_min_size = Vector2(0, 10)
 	vbox.add_child(spacer2)
 
-	_build_mission_list(vbox)
+	var list_panel = _make_text_panel()
+	vbox.add_child(list_panel)
+	var list_vbox = VBoxContainer.new()
+	list_vbox.alignment = VBoxContainer.ALIGN_CENTER
+	list_panel.add_child(list_vbox)
+	_build_mission_list(list_vbox)
 
 	var badges_label = Label.new()
 	badges_label.text = _get_badges_text()
 	badges_label.align = Label.ALIGN_CENTER
 	badges_label.add_font_override("font", GameManager.make_font(22, false))
-	badges_label.add_color_override("font_color", Color(0.8, 0.85, 1.0))
-	vbox.add_child(badges_label)
+	badges_label.add_color_override("font_color", Color(0.9, 0.95, 1.0))
+	list_panel.add_child(badges_label)
 
-func _build_mission_list(parent: VBoxContainer) -> void:
+func _make_text_panel() -> PanelContainer:
+	var panel = PanelContainer.new()
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.0, 0.0, 0.0, 0.55)
+	style.corner_radius_top_left = 12
+	style.corner_radius_top_right = 12
+	style.corner_radius_bottom_left = 12
+	style.corner_radius_bottom_right = 12
+	style.content_margin_left = 20
+	style.content_margin_right = 20
+	style.content_margin_top = 10
+	style.content_margin_bottom = 10
+	panel.add_stylebox_override("panel", style)
+	return panel
+
+func _build_mission_list(parent) -> void:
 	_mission_container = VBoxContainer.new()
 	_mission_container.alignment = VBoxContainer.ALIGN_CENTER
 	parent.add_child(_mission_container)

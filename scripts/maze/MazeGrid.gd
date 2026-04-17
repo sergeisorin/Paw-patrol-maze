@@ -19,16 +19,32 @@ var _goal_sprite: Sprite = null
 var _collectible_nodes: Dictionary = {}
 var _wall_theme_color: Color = WALL_COLOR
 var _path_theme_color: Color = PATH_COLOR
+var _tile_style: String = "outdoor"
+
+var _wall_tex: Texture = null
+var _path_tex: Texture = null
+var _goal_tex: Texture = null
+var _bone_tex: Texture = null
 
 enum Cell { WALL, PATH, START, GOAL, COLLECTIBLE, DEAD_END_SURPRISE }
 
-func setup(width: int, height: int, maze_data: Array, theme_wall: Color = WALL_COLOR, theme_path: Color = PATH_COLOR) -> void:
+func setup(width: int, height: int, maze_data: Array, theme_wall: Color = WALL_COLOR, theme_path: Color = PATH_COLOR, tile_style: String = "outdoor") -> void:
 	grid_width = width
 	grid_height = height
 	cells = maze_data
 	_wall_theme_color = theme_wall
 	_path_theme_color = theme_path
+	_tile_style = tile_style
+	_load_textures()
 	_build_visuals()
+
+func _load_textures() -> void:
+	var wall_suffix = "wall_tile.png" if _tile_style == "outdoor" else "wall_tile_indoor.png"
+	var path_suffix = "path_tile.png" if _tile_style == "outdoor" else "path_tile_indoor.png"
+	_wall_tex = load("res://assets/sprites/tiles/" + wall_suffix)
+	_path_tex = load("res://assets/sprites/tiles/" + path_suffix)
+	_goal_tex = load("res://assets/sprites/objects/goal_doghouse.png")
+	_bone_tex = load("res://assets/sprites/objects/collectible_bone.png")
 
 func _build_visuals() -> void:
 	for child in get_children():
@@ -56,105 +72,46 @@ func _build_visuals() -> void:
 
 func _create_wall_tile(pos: Vector2) -> void:
 	var sprite = Sprite.new()
-	var img = Image.new()
-	img.create(CELL_SIZE, CELL_SIZE, false, Image.FORMAT_RGBA8)
-	img.lock()
-	var base = _wall_theme_color
-	for px in range(CELL_SIZE):
-		for py in range(CELL_SIZE):
-			var noise_val = sin(px * 0.8) * cos(py * 0.6) * 0.04
-			var edge_fade = 1.0
-			var edge_dist = min(min(px, CELL_SIZE - 1 - px), min(py, CELL_SIZE - 1 - py))
-			if edge_dist < 4:
-				edge_fade = 0.92 + 0.08 * (edge_dist / 4.0)
-			var c = Color(
-				clamp(base.r * edge_fade + noise_val, 0, 1),
-				clamp(base.g * edge_fade + noise_val * 0.8, 0, 1),
-				clamp(base.b * edge_fade + noise_val * 0.5, 0, 1)
-			)
-			img.set_pixel(px, py, c)
-	img.unlock()
-	var tex = ImageTexture.new()
-	tex.create_from_image(img, 0)
-	sprite.texture = tex
+	if _wall_tex:
+		sprite.texture = _wall_tex
+		sprite.modulate = _wall_theme_color.lightened(0.4)
+	else:
+		var img = Image.new()
+		img.create(CELL_SIZE, CELL_SIZE, false, Image.FORMAT_RGBA8)
+		img.fill(_wall_theme_color)
+		var tex = ImageTexture.new()
+		tex.create_from_image(img, 0)
+		sprite.texture = tex
 	sprite.position = pos
 	add_child(sprite)
 
 func _create_path_tile(pos: Vector2) -> void:
 	var sprite = Sprite.new()
-	var img = Image.new()
-	img.create(CELL_SIZE, CELL_SIZE, false, Image.FORMAT_RGBA8)
-	img.lock()
-	var base = _path_theme_color
-	for px in range(CELL_SIZE):
-		for py in range(CELL_SIZE):
-			var variation = sin(px * 0.3 + py * 0.2) * 0.015
-			var c = Color(
-				clamp(base.r + variation, 0, 1),
-				clamp(base.g + variation, 0, 1),
-				clamp(base.b + variation * 0.5, 0, 1)
-			)
-			if px == 0 or py == 0:
-				c = c.darkened(0.04)
-			img.set_pixel(px, py, c)
-	img.unlock()
-	var tex = ImageTexture.new()
-	tex.create_from_image(img, 0)
-	sprite.texture = tex
+	if _path_tex:
+		sprite.texture = _path_tex
+		sprite.modulate = _path_theme_color.lightened(0.2)
+	else:
+		var img = Image.new()
+		img.create(CELL_SIZE, CELL_SIZE, false, Image.FORMAT_RGBA8)
+		img.fill(_path_theme_color)
+		var tex = ImageTexture.new()
+		tex.create_from_image(img, 0)
+		sprite.texture = tex
 	sprite.position = pos
 	add_child(sprite)
 
 func _create_goal_marker(pos: Vector2) -> void:
 	_goal_sprite = Sprite.new()
-	var size = CELL_SIZE
-	var img = Image.new()
-	img.create(size, size, false, Image.FORMAT_RGBA8)
-	img.lock()
-	var cx = size / 2.0
-	var cy = size / 2.0
-	var outer_r = size * 0.42
-	var inner_r = outer_r * 0.42
-	var points = 5
-
-	# Precompute star polygon vertices
-	var star_verts = []
-	for i in range(points * 2):
-		var angle = (float(i) / float(points * 2)) * TAU - PI / 2
-		var r = outer_r if i % 2 == 0 else inner_r
-		star_verts.append(Vector2(cx + cos(angle) * r, cy + sin(angle) * r))
-
-	for px in range(size):
-		for py in range(size):
-			var p = Vector2(px, py)
-			var dist_center = p.distance_to(Vector2(cx, cy))
-
-			# Outer glow
-			if dist_center < outer_r * 1.4 and dist_center > outer_r * 0.9:
-				var glow_alpha = (1.0 - (dist_center - outer_r * 0.9) / (outer_r * 0.5)) * 0.25
-				if glow_alpha > 0.01:
-					img.set_pixel(px, py, Color(1.0, 0.95, 0.4, clamp(glow_alpha, 0, 0.3)))
-
-			# Star fill using winding number test
-			if _point_in_star(p, star_verts):
-				var grad = dist_center / outer_r
-				var brightness = 1.0 - grad * 0.2
-				img.set_pixel(px, py, Color(
-					clamp(1.0 * brightness, 0, 1),
-					clamp(0.82 * brightness, 0, 1),
-					clamp(0.1, 0, 1)
-				))
-
-			# Bright center highlight
-			if dist_center < inner_r * 0.7:
-				var hl = 1.0 - dist_center / (inner_r * 0.7)
-				var base = img.get_pixel(px, py)
-				if base.a > 0:
-					img.set_pixel(px, py, base.linear_interpolate(Color.white, hl * 0.4))
-
-	img.unlock()
-	var tex = ImageTexture.new()
-	tex.create_from_image(img, 0)
-	_goal_sprite.texture = tex
+	if _goal_tex:
+		_goal_sprite.texture = _goal_tex
+	else:
+		var size = CELL_SIZE
+		var img = Image.new()
+		img.create(size, size, false, Image.FORMAT_RGBA8)
+		img.fill(Color(1.0, 0.82, 0.1))
+		var tex = ImageTexture.new()
+		tex.create_from_image(img, 0)
+		_goal_sprite.texture = tex
 	_goal_sprite.position = pos
 	_goal_sprite.z_index = 5
 	add_child(_goal_sprite)
@@ -185,55 +142,31 @@ func _pulse_goal() -> void:
 
 func _create_collectible(pos: Vector2, grid_pos: Vector2) -> void:
 	var sprite = Sprite.new()
-	var size = 64
-	var img = Image.new()
-	img.create(size, size, false, Image.FORMAT_RGBA8)
-	img.lock()
-	var cx = size / 2.0
-	var cy = size / 2.0
-	var outer_r = size * 0.4
-	var inner_r = outer_r * 0.4
-	var points = 5
-
-	var star_verts = []
-	for i in range(points * 2):
-		var angle = (float(i) / float(points * 2)) * TAU - PI / 2
-		var r = outer_r if i % 2 == 0 else inner_r
-		star_verts.append(Vector2(cx + cos(angle) * r, cy + sin(angle) * r))
-
-	for px in range(size):
-		for py in range(size):
-			var p = Vector2(px, py)
-			var dist_center = p.distance_to(Vector2(cx, cy))
-
-			if _point_in_star(p, star_verts):
-				var grad = dist_center / outer_r
-				var brightness = 1.0 - grad * 0.15
-				img.set_pixel(px, py, Color(
-					clamp(1.0 * brightness, 0, 1),
-					clamp(0.88 * brightness, 0, 1),
-					clamp(0.15, 0, 1)
-				))
-				if dist_center < inner_r * 0.6:
-					var hl = 1.0 - dist_center / (inner_r * 0.6)
-					var base = img.get_pixel(px, py)
-					img.set_pixel(px, py, base.linear_interpolate(Color(1, 1, 0.8), hl * 0.5))
-
-	img.unlock()
-	var tex = ImageTexture.new()
-	tex.create_from_image(img, 0)
-	sprite.texture = tex
+	if _bone_tex:
+		sprite.texture = _bone_tex
+	else:
+		var size = 64
+		var img = Image.new()
+		img.create(size, size, false, Image.FORMAT_RGBA8)
+		img.fill(Color(1.0, 0.88, 0.15))
+		var tex = ImageTexture.new()
+		tex.create_from_image(img, 0)
+		sprite.texture = tex
 	sprite.position = pos
 	sprite.z_index = 5
 	add_child(sprite)
 
-	# Gentle sparkle animation
-	var sparkle_tween = Tween.new()
-	sprite.add_child(sparkle_tween)
-	sparkle_tween.interpolate_property(sprite, "scale", Vector2(0.95, 0.95), Vector2(1.1, 1.1), 0.6, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
-	sparkle_tween.interpolate_property(sprite, "scale", Vector2(1.1, 1.1), Vector2(0.95, 0.95), 0.6, Tween.TRANS_SINE, Tween.EASE_IN_OUT, 0.6)
-	sparkle_tween.repeat = true
-	sparkle_tween.start()
+	var float_tween = Tween.new()
+	sprite.add_child(float_tween)
+	var base_scale = sprite.scale
+	var float_up = pos + Vector2(0, -6)
+	var float_down = pos + Vector2(0, 6)
+	float_tween.interpolate_property(sprite, "position", float_down, float_up, 0.7, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
+	float_tween.interpolate_property(sprite, "position", float_up, float_down, 0.7, Tween.TRANS_SINE, Tween.EASE_IN_OUT, 0.7)
+	float_tween.interpolate_property(sprite, "scale", base_scale * 0.95, base_scale * 1.08, 0.7, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
+	float_tween.interpolate_property(sprite, "scale", base_scale * 1.08, base_scale * 0.95, 0.7, Tween.TRANS_SINE, Tween.EASE_IN_OUT, 0.7)
+	float_tween.repeat = true
+	float_tween.start()
 
 	collectible_cells.append(grid_pos)
 	_collectible_nodes[grid_pos] = sprite
@@ -259,19 +192,54 @@ func try_collect(grid_pos: Vector2) -> bool:
 		_collected.append(grid_pos)
 		if grid_pos in _collectible_nodes:
 			var node = _collectible_nodes[grid_pos]
+			_spawn_pickup_burst(node.position)
 			var tween = Tween.new()
 			node.add_child(tween)
-			tween.interpolate_property(node, "scale", Vector2.ONE, Vector2(1.5, 1.5), 0.15, Tween.TRANS_BACK, Tween.EASE_OUT)
+			var base_scale = node.scale
+			tween.interpolate_property(node, "scale", base_scale, base_scale * 1.5, 0.15, Tween.TRANS_BACK, Tween.EASE_OUT)
 			tween.interpolate_property(node, "modulate:a", 1.0, 0.0, 0.2, Tween.TRANS_QUAD, Tween.EASE_IN, 0.15)
 			tween.start()
 			tween.connect("tween_all_completed", node, "queue_free")
-		emit_signal("collectible_picked", "star")
+		emit_signal("collectible_picked", "bone")
 		return true
 	return false
+
+func _spawn_pickup_burst(pos: Vector2) -> void:
+	var burst_colors = [Color.yellow, Color.gold, Color(1.0, 0.6, 0.2), Color.white]
+	for i in range(8):
+		var particle = Sprite.new()
+		var p_size = 12
+		var img = Image.new()
+		img.create(p_size, p_size, false, Image.FORMAT_RGBA8)
+		img.lock()
+		var center = Vector2(p_size / 2.0, p_size / 2.0)
+		var c = burst_colors[randi() % burst_colors.size()]
+		for px in range(p_size):
+			for py in range(p_size):
+				if Vector2(px, py).distance_to(center) < p_size * 0.4:
+					img.set_pixel(px, py, c)
+		img.unlock()
+		var tex = ImageTexture.new()
+		tex.create_from_image(img, 0)
+		particle.texture = tex
+		particle.position = pos
+		particle.z_index = 8
+		add_child(particle)
+
+		var angle = (float(i) / 8.0) * TAU
+		var target_pos = pos + Vector2(cos(angle), sin(angle)) * rand_range(30, 60)
+		var burst_tween = Tween.new()
+		particle.add_child(burst_tween)
+		burst_tween.interpolate_property(particle, "position", pos, target_pos, 0.35, Tween.TRANS_QUAD, Tween.EASE_OUT)
+		burst_tween.interpolate_property(particle, "modulate:a", 1.0, 0.0, 0.35, Tween.TRANS_LINEAR)
+		burst_tween.interpolate_property(particle, "scale", Vector2.ONE, Vector2(0.2, 0.2), 0.35, Tween.TRANS_QUAD, Tween.EASE_IN)
+		burst_tween.start()
+		burst_tween.connect("tween_all_completed", particle, "queue_free")
 
 func check_goal(grid_pos: Vector2) -> bool:
 	if grid_pos == goal_cell:
 		if _goal_sprite and is_instance_valid(_goal_sprite):
+			_goal_sprite.visible = false
 			_goal_sprite.queue_free()
 			_goal_sprite = null
 		emit_signal("goal_reached")

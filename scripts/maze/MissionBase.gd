@@ -89,7 +89,7 @@ func _build_maze() -> void:
 	_player.name = "MazePlayer"
 	_player.set_script(MazePlayerScript)
 	add_child(_player)
-	_player.setup(_maze, _maze.start_cell, pup_color)
+	_player.setup(_maze, _maze.start_cell, pup_color, pup_id)
 
 	_setup_camera()
 	_create_goal_indicator()
@@ -157,6 +157,7 @@ func _on_goal_reached() -> void:
 	_player.set_process(false)
 	HintManager.clear_all()
 	AudioManager.play_sfx("reward")
+	_player.play_victory_spin()
 	_reward_finished_flag = false
 	RewardManager.connect("reward_finished", self, "_on_reward_finished", [], CONNECT_ONESHOT)
 	RewardManager.play_chapter_complete()

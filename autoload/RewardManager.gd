@@ -5,8 +5,10 @@ signal reward_finished(reward_type)
 
 var _reward_layer: CanvasLayer = null
 var _particles_container: Node2D = null
+var _paw_badge_tex: Texture = null
 
 func _ready() -> void:
+	_paw_badge_tex = load("res://assets/sprites/objects/paw_badge.png")
 	_setup_reward_layer()
 
 func _setup_reward_layer() -> void:
@@ -53,35 +55,28 @@ func _spawn_star_burst(pos: Vector2, count: int) -> void:
 func _create_star() -> Node2D:
 	var star = Node2D.new()
 	var sprite = Sprite.new()
+	var tint_colors = [Color.yellow, Color.gold, Color(1.0, 0.5, 0.8), Color.cyan, Color(0.6, 1.0, 0.4), Color.white]
 
-	var px_size = 28
-	var img = Image.new()
-	img.create(px_size, px_size, false, Image.FORMAT_RGBA8)
-	img.lock()
-	var center = Vector2(px_size / 2.0, px_size / 2.0)
-	var outer_r = px_size * 0.42
-	var inner_r = outer_r * 0.4
-	var colors = [Color.yellow, Color.gold, Color(1.0, 0.5, 0.8), Color.cyan, Color(0.6, 1.0, 0.4), Color.white]
-	var c = colors[randi() % colors.size()]
+	if _paw_badge_tex:
+		sprite.texture = _paw_badge_tex
+		sprite.scale = Vector2(0.3, 0.3)
+		sprite.modulate = tint_colors[randi() % tint_colors.size()]
+	else:
+		var px_size = 28
+		var img = Image.new()
+		img.create(px_size, px_size, false, Image.FORMAT_RGBA8)
+		img.lock()
+		var center = Vector2(px_size / 2.0, px_size / 2.0)
+		var c = tint_colors[randi() % tint_colors.size()]
+		for x in range(px_size):
+			for y in range(px_size):
+				if Vector2(x, y).distance_to(center) < px_size * 0.4:
+					img.set_pixel(x, y, c)
+		img.unlock()
+		var tex = ImageTexture.new()
+		tex.create_from_image(img, 0)
+		sprite.texture = tex
 
-	var verts = []
-	for i in range(10):
-		var angle = (float(i) / 10.0) * TAU - PI / 2
-		var r = outer_r if i % 2 == 0 else inner_r
-		verts.append(Vector2(center.x + cos(angle) * r, center.y + sin(angle) * r))
-
-	for x in range(px_size):
-		for y in range(px_size):
-			var p = Vector2(x, y)
-			var dist = p.distance_to(center)
-			if _point_in_polygon(p, verts):
-				var alpha = clamp(1.0 - (dist / outer_r) * 0.3, 0.5, 1.0)
-				img.set_pixel(x, y, Color(c.r, c.g, c.b, alpha))
-	img.unlock()
-
-	var tex = ImageTexture.new()
-	tex.create_from_image(img, 0)
-	sprite.texture = tex
 	star.add_child(sprite)
 	return star
 
