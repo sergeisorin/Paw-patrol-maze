@@ -34,7 +34,7 @@ jobs:
       - name: Install Export Templates
         shell: pwsh
         run: |
-          $templateDir = "$env:APPDATA\Godot\export_templates\3.6.stable"
+          $templateDir = "$env:APPDATA\Godot\templates\3.6.stable"
           New-Item -ItemType Directory -Path $templateDir -Force | Out-Null
           $url = "https://github.com/godotengine/godot/releases/download/${{ env.GODOT_VERSION }}/Godot_v${{ env.GODOT_VERSION }}_export_templates.tpz"
           Write-Output "Downloading export templates (~600MB)..."
