@@ -12,8 +12,6 @@ func _play_intro_dialogue() -> void:
 		{"speaker": "Гонщик", "text": "Гонщик ведёт команду! Вперёд к Базе!", "duration": 3.0, "voice": "res://assets/audio/voice/m7_intro_chase.wav"},
 	])
 
-func _get_maze_size() -> Vector2:
-	return Vector2(13, 11)
 
 func _get_wall_color() -> Color:
 	return Color(0.4, 0.45, 0.35)
@@ -27,21 +25,6 @@ func _get_goal_sprite() -> String:
 func _get_tile_style() -> String:
 	return "indoor"
 
-func _get_maze_data() -> Array:
-	var W = 0; var P = 1; var S = 2; var G = 3; var C = 4; var D = 5
-	return [
-		[W,W,W,W,W,W,W,W,W,W,W,W,W],
-		[W,P,P,P,C,P,W,P,P,C,P,G,W],
-		[W,P,W,W,W,P,W,P,W,W,W,P,W],
-		[W,P,W,D,P,P,P,P,P,P,W,P,W],
-		[W,P,W,P,W,W,W,W,W,P,W,P,W],
-		[W,C,P,P,P,P,P,C,W,P,P,P,W],
-		[W,W,W,W,W,P,W,P,W,W,W,D,W],
-		[W,P,P,P,W,P,W,P,P,C,P,P,W],
-		[W,P,W,P,W,C,W,W,W,P,W,W,W],
-		[W,S,P,P,P,P,P,D,P,P,P,P,W],
-		[W,W,W,W,W,W,W,W,W,W,W,W,W],
-	]
 
 func _play_celebration() -> void:
 	DialogueManager.play_sequence([

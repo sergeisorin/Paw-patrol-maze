@@ -1,0 +1,23 @@
+[remap]
+
+importer="wav"
+type="AudioStreamSample"
+path="res://.import/m15_celeb_skye.wav-a22e5e030253f28965614921bb90a885.sample"
+
+[deps]
+
+source_file="res://assets/audio/voice/m15_celeb_skye.wav"
+dest_files=[ "res://.import/m15_celeb_skye.wav-a22e5e030253f28965614921bb90a885.sample" ]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=0

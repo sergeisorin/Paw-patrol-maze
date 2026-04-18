@@ -68,6 +68,8 @@ func _play_voice(voice_path: String) -> void:
 	if stream:
 		_voice_player.stream = stream
 		_voice_player.play()
+	else:
+		push_warning("DialogueManager: failed to load voice clip: " + voice_path)
 
 func _show_visual_dialogue(speaker: String, text: String, icon: String) -> void:
 	if _dialogue_layer and is_instance_valid(_dialogue_layer):

@@ -172,10 +172,10 @@ func _play_intro_dialogue() -> void:
 	])
 
 func _get_maze_data() -> Array:
-	return []
+	return MazeGenerator.generate_for_mission(mission_index)
 
 func _get_maze_size() -> Vector2:
-	return Vector2(11, 9)
+	return MazeGenerator.maze_dimensions_for_level(mission_index)
 
 func _get_wall_color() -> Color:
 	return Color(0.35, 0.55, 0.3)
@@ -399,6 +399,7 @@ func _show_pause_menu() -> void:
 	resume_btn.text = "ПРОДОЛЖИТЬ"
 	resume_btn.rect_min_size = Vector2(400, 80)
 	resume_btn.add_font_override("font", GameManager.make_font(32))
+	GameManager.apply_menu_button_styles(resume_btn)
 	resume_btn.pause_mode = PAUSE_MODE_PROCESS
 	resume_btn.connect("pressed", self, "_resume")
 	inner.add_child(resume_btn)
@@ -407,6 +408,7 @@ func _show_pause_menu() -> void:
 	restart_btn.text = "НАЧАТЬ СНАЧАЛА"
 	restart_btn.rect_min_size = Vector2(400, 80)
 	restart_btn.add_font_override("font", GameManager.make_font(32))
+	GameManager.apply_menu_button_styles(restart_btn)
 	restart_btn.pause_mode = PAUSE_MODE_PROCESS
 	restart_btn.connect("pressed", self, "_restart_from_beginning")
 	inner.add_child(restart_btn)
@@ -415,6 +417,7 @@ func _show_pause_menu() -> void:
 	menu_btn.text = "В МЕНЮ"
 	menu_btn.rect_min_size = Vector2(400, 80)
 	menu_btn.add_font_override("font", GameManager.make_font(32))
+	GameManager.apply_menu_button_styles(menu_btn)
 	menu_btn.pause_mode = PAUSE_MODE_PROCESS
 	menu_btn.connect("pressed", self, "_back_to_menu")
 	inner.add_child(menu_btn)

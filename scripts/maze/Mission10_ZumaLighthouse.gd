@@ -12,8 +12,6 @@ func _play_intro_dialogue() -> void:
 		{"speaker": "Зума", "text": "Поплыли! Я включу маяк!", "duration": 3.0, "voice": "res://assets/audio/voice/m10_intro_zuma.wav"},
 	])
 
-func _get_maze_size() -> Vector2:
-	return Vector2(11, 9)
 
 func _get_wall_color() -> Color:
 	return Color(0.2, 0.4, 0.55)
@@ -24,19 +22,6 @@ func _get_path_color() -> Color:
 func _get_goal_sprite() -> String:
 	return "goal_lighthouse.png"
 
-func _get_maze_data() -> Array:
-	var W = 0; var P = 1; var S = 2; var G = 3; var C = 4; var D = 5
-	return [
-		[W,W,W,W,W,W,W,W,W,W,W],
-		[W,D,W,P,P,C,P,P,P,G,W],
-		[W,P,W,P,W,W,W,W,W,W,W],
-		[W,P,P,P,P,C,P,P,C,P,W],
-		[W,W,W,W,W,W,W,W,W,P,W],
-		[W,W,W,P,D,W,W,W,W,P,W],
-		[W,W,W,P,W,W,W,W,W,P,W],
-		[W,S,P,P,C,P,P,P,P,P,W],
-		[W,W,W,W,W,W,W,W,W,W,W],
-	]
 
 func _play_celebration() -> void:
 	DialogueManager.play_sequence([

@@ -57,6 +57,7 @@ func _build_ui() -> void:
 	_play_button.text = _get_play_text()
 	_play_button.rect_min_size = Vector2(400, 80)
 	_play_button.add_font_override("font", GameManager.make_font(36))
+	GameManager.apply_menu_button_styles(_play_button)
 	_play_button.connect("pressed", self, "_on_play_pressed")
 	vbox.add_child(_play_button)
 
@@ -64,6 +65,7 @@ func _build_ui() -> void:
 	restart_btn.text = "RESTART ALL LEVELS"
 	restart_btn.rect_min_size = Vector2(400, 80)
 	restart_btn.add_font_override("font", GameManager.make_font(36))
+	GameManager.apply_menu_button_styles(restart_btn)
 	restart_btn.connect("pressed", self, "_on_restart_all_pressed")
 	vbox.add_child(restart_btn)
 
@@ -95,6 +97,7 @@ func _build_ui() -> void:
 	quit_btn.text = "QUIT"
 	quit_btn.rect_min_size = Vector2(400, 64)
 	quit_btn.add_font_override("font", GameManager.make_font(28))
+	GameManager.apply_menu_button_styles(quit_btn)
 	quit_btn.connect("pressed", self, "_on_quit_pressed")
 	vbox.add_child(quit_btn)
 

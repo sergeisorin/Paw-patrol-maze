@@ -12,8 +12,6 @@ func _play_intro_dialogue() -> void:
 		{"speaker": "Маршал", "text": "Фейерверки! Будет красиво! Бегу!", "duration": 3.0, "voice": "res://assets/audio/voice/m26_intro_marshall.wav"},
 	])
 
-func _get_maze_size() -> Vector2:
-	return Vector2(17, 15)
 
 func _get_wall_color() -> Color:
 	return Color(0.45, 0.3, 0.2)
@@ -24,25 +22,6 @@ func _get_path_color() -> Color:
 func _get_goal_sprite() -> String:
 	return "goal_fireworks.png"
 
-func _get_maze_data() -> Array:
-	var W = 0; var P = 1; var S = 2; var G = 3; var C = 4; var D = 5
-	return [
-		[W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W],
-		[W,D,P,P,W,P,P,P,P,P,W,P,P,C,P,G,W],
-		[W,W,W,P,W,P,W,W,W,P,W,W,W,W,W,P,W],
-		[W,C,P,P,P,P,P,P,W,P,P,P,P,P,W,P,W],
-		[W,W,W,W,W,W,W,P,W,W,W,W,W,P,W,P,W],
-		[W,D,W,P,P,P,W,P,P,C,P,P,W,P,W,P,W],
-		[W,P,W,P,W,P,W,W,W,W,W,P,W,P,W,P,W],
-		[W,P,P,P,W,P,P,P,P,P,P,P,P,P,P,P,W],
-		[W,W,W,P,W,W,W,W,W,P,W,W,W,W,W,W,W],
-		[W,P,P,P,P,C,P,P,W,P,P,P,C,P,P,D,W],
-		[W,P,W,W,W,W,W,P,W,W,W,W,W,W,W,W,W],
-		[W,P,P,P,P,P,P,P,P,P,C,P,P,P,P,P,W],
-		[W,W,W,P,W,W,W,W,W,W,W,W,W,W,W,P,W],
-		[W,S,P,P,P,C,P,D,W,P,P,P,P,P,P,P,W],
-		[W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W],
-	]
 
 func _play_celebration() -> void:
 	DialogueManager.play_sequence([

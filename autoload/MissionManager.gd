@@ -15,6 +15,7 @@ func _ready() -> void:
 	pause_mode = PAUSE_MODE_PROCESS
 
 func load_mission(mission_index: int) -> void:
+	GameManager.current_mission = mission_index
 	var data = GameManager.get_mission(mission_index)
 	if data.empty():
 		push_error("Invalid mission index: " + str(mission_index))

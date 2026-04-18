@@ -16,6 +16,7 @@ var goal_cell: Vector2 = Vector2.ZERO
 var collectible_cells: Array = []
 var _collected: Array = []
 var _goal_sprite: Sprite = null
+var _goal_glow: Sprite = null
 var _collectible_nodes: Dictionary = {}
 var _wall_theme_color: Color = WALL_COLOR
 var _path_theme_color: Color = PATH_COLOR
@@ -44,8 +45,111 @@ func _load_textures(goal_sprite_name: String = "goal_doghouse.png") -> void:
 	var path_suffix = "path_tile.png" if _tile_style == "outdoor" else "path_tile_indoor.png"
 	_wall_tex = load("res://assets/sprites/tiles/" + wall_suffix)
 	_path_tex = load("res://assets/sprites/tiles/" + path_suffix)
-	_goal_tex = load("res://assets/sprites/objects/" + goal_sprite_name)
+	var goal_path = "res://assets/sprites/objects/" + goal_sprite_name
+	var img = Image.new()
+	if _load_goal_image_pixels(goal_path, img):
+		_strip_goal_background(img)
+		var gtex = ImageTexture.new()
+		gtex.create_from_image(img, 0)
+		_goal_tex = gtex
+	else:
+		_goal_tex = load(goal_path)
 	_bone_tex = load("res://assets/sprites/objects/collectible_bone.png")
+
+func _load_goal_image_pixels(goal_path: String, img: Image) -> bool:
+	if img.load(goal_path) == OK:
+		return true
+	var f = File.new()
+	if f.open(goal_path, File.READ) != OK:
+		return false
+	var buf = f.get_buffer(f.get_len())
+	f.close()
+	return img.load_png_from_buffer(buf) == OK
+
+func _strip_goal_background(img: Image) -> void:
+	img.convert(Image.FORMAT_RGBA8)
+	var w = img.get_width()
+	var h = img.get_height()
+	if w < 2 or h < 2:
+		return
+	img.lock()
+	var key = _infer_goal_bg_key(img, w, h)
+	if key.a < 0.08:
+		img.unlock()
+		return
+	var tol = 0.12
+	var visited = {}
+	var queue = []
+	var dirs = [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]
+
+	for x in range(w):
+		_enqueue_if_bg(img, visited, queue, key, tol, x, 0)
+		_enqueue_if_bg(img, visited, queue, key, tol, x, h - 1)
+	for y in range(1, h - 1):
+		_enqueue_if_bg(img, visited, queue, key, tol, 0, y)
+		_enqueue_if_bg(img, visited, queue, key, tol, w - 1, y)
+
+	var qi = 0
+	while qi < queue.size():
+		var here = queue[qi]
+		qi += 1
+		var hx = int(here.x)
+		var hy = int(here.y)
+		var pc = img.get_pixel(hx, hy)
+		img.set_pixel(hx, hy, Color(pc.r, pc.g, pc.b, 0.0))
+		for d in dirs:
+			var nx = hx + int(d.x)
+			var ny = hy + int(d.y)
+			if nx < 0 or nx >= w or ny < 0 or ny >= h:
+				continue
+			var nk = Vector2(nx, ny)
+			if visited.has(nk):
+				continue
+			var pn = img.get_pixel(nx, ny)
+			if pn.a < 0.08:
+				continue
+			if _rgb_near_rgb(pn, key, tol):
+				visited[nk] = true
+				queue.append(nk)
+	img.unlock()
+
+func _infer_goal_bg_key(img: Image, w: int, h: int) -> Color:
+	var c0 = img.get_pixel(0, 0)
+	var c1 = img.get_pixel(w - 1, 0)
+	var c2 = img.get_pixel(0, h - 1)
+	var c3 = img.get_pixel(w - 1, h - 1)
+	var corners = [c0, c1, c2, c3]
+	for c in corners:
+		if c.a < 0.08:
+			return c0
+	var max_manh = 0.0
+	for i in range(4):
+		for j in range(i + 1, 4):
+			var d = abs(corners[i].r - corners[j].r) + abs(corners[i].g - corners[j].g) + abs(corners[i].b - corners[j].b)
+			if d > max_manh:
+				max_manh = d
+	if max_manh < 0.38:
+		return Color(
+			(c0.r + c1.r + c2.r + c3.r) / 4.0,
+			(c0.g + c1.g + c2.g + c3.g) / 4.0,
+			(c0.b + c1.b + c2.b + c3.b) / 4.0,
+			1.0
+		)
+	return Color(c0.r, c0.g, c0.b, 1.0)
+
+func _enqueue_if_bg(img: Image, visited: Dictionary, queue: Array, key: Color, tol: float, x: int, y: int) -> void:
+	var k = Vector2(x, y)
+	if visited.has(k):
+		return
+	var p = img.get_pixel(x, y)
+	if p.a < 0.08:
+		return
+	if _rgb_near_rgb(p, key, tol):
+		visited[k] = true
+		queue.append(k)
+
+func _rgb_near_rgb(a: Color, b: Color, tol: float) -> bool:
+	return abs(a.r - b.r) <= tol and abs(a.g - b.g) <= tol and abs(a.b - b.b) <= tol
 
 func _build_visuals() -> void:
 	for child in get_children():
@@ -123,11 +227,11 @@ func _create_path_tile(pos: Vector2) -> void:
 	add_child(sprite)
 
 func _create_goal_marker(pos: Vector2) -> void:
-	var glow = _create_goal_glow()
-	glow.position = pos
-	glow.z_index = 4
-	add_child(glow)
-	_pulse_glow(glow)
+	_goal_glow = _create_goal_glow()
+	_goal_glow.position = pos
+	_goal_glow.z_index = 4
+	add_child(_goal_glow)
+	_pulse_glow(_goal_glow)
 
 	_goal_sprite = Sprite.new()
 	if _goal_tex:
@@ -297,6 +401,9 @@ func _spawn_pickup_burst(pos: Vector2) -> void:
 
 func check_goal(grid_pos: Vector2) -> bool:
 	if grid_pos == goal_cell:
+		if _goal_glow and is_instance_valid(_goal_glow):
+			_goal_glow.queue_free()
+			_goal_glow = null
 		if _goal_sprite and is_instance_valid(_goal_sprite):
 			_goal_sprite.visible = false
 			_goal_sprite.queue_free()

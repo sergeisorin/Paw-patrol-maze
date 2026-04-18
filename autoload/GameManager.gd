@@ -273,12 +273,64 @@ func _ready() -> void:
 	_font_data_bold.font_path = "res://assets/fonts/NotoSans-Bold.ttf"
 	_font_data_regular = DynamicFontData.new()
 	_font_data_regular.font_path = "res://assets/fonts/NotoSans-Regular.ttf"
+	_schedule_cmdline_qa_mission()
 
 func make_font(size: int, bold: bool = true) -> DynamicFont:
 	var font = DynamicFont.new()
 	font.font_data = _font_data_bold if bold else _font_data_regular
 	font.size = size
 	return font
+
+func apply_menu_button_styles(btn: Button) -> void:
+	var radius = 12
+	var normal = StyleBoxFlat.new()
+	normal.bg_color = Color(0.1, 0.08, 0.18, 0.92)
+	normal.corner_radius_top_left = radius
+	normal.corner_radius_top_right = radius
+	normal.corner_radius_bottom_left = radius
+	normal.corner_radius_bottom_right = radius
+	normal.border_width_left = 2
+	normal.border_width_top = 2
+	normal.border_width_right = 2
+	normal.border_width_bottom = 2
+	normal.border_color = Color(0.45, 0.4, 0.55, 0.85)
+	normal.content_margin_left = 16
+	normal.content_margin_right = 16
+	normal.content_margin_top = 10
+	normal.content_margin_bottom = 10
+
+	var hover = normal.duplicate()
+	hover.bg_color = Color(0.14, 0.12, 0.26, 0.96)
+	hover.border_color = Color(0.65, 0.58, 0.75, 0.95)
+
+	var pressed = normal.duplicate()
+	pressed.bg_color = Color(0.06, 0.05, 0.12, 0.98)
+	pressed.border_color = Color(0.35, 0.32, 0.45, 0.9)
+
+	var focus = StyleBoxFlat.new()
+	focus.bg_color = Color(0.95, 0.78, 0.08, 1.0)
+	focus.corner_radius_top_left = radius
+	focus.corner_radius_top_right = radius
+	focus.corner_radius_bottom_left = radius
+	focus.corner_radius_bottom_right = radius
+	focus.border_width_left = 5
+	focus.border_width_top = 5
+	focus.border_width_right = 5
+	focus.border_width_bottom = 5
+	focus.border_color = Color(1.0, 1.0, 1.0, 1.0)
+	focus.content_margin_left = 16
+	focus.content_margin_right = 16
+	focus.content_margin_top = 10
+	focus.content_margin_bottom = 10
+
+	btn.add_stylebox_override("normal", normal)
+	btn.add_stylebox_override("hover", hover)
+	btn.add_stylebox_override("pressed", pressed)
+	btn.add_stylebox_override("focus", focus)
+	btn.add_color_override("font_color", Color.white)
+	btn.add_color_override("font_color_hover", Color.white)
+	btn.add_color_override("font_color_pressed", Color(0.92, 0.92, 1.0))
+	btn.add_color_override("font_color_focus", Color(0.12, 0.09, 0.02))
 
 func complete_mission(mission_index: int) -> void:
 	if mission_index in missions_completed:
@@ -328,3 +380,38 @@ func reset_game() -> void:
 	missions_completed = []
 	badges_earned = []
 	collectibles_total = 0
+
+func _schedule_cmdline_qa_mission() -> void:
+	var idx = _parse_cmdline_mission_index()
+	if idx < 0:
+		return
+	if idx >= mission_data.size():
+		push_warning("QA --mission: index out of range (0..%d): %d" % [mission_data.size() - 1, idx])
+		return
+	call_deferred("_deferred_cmdline_load_mission", idx)
+
+func _deferred_cmdline_load_mission(idx: int) -> void:
+	MissionManager.load_mission(idx)
+
+func _parse_cmdline_mission_index() -> int:
+	var args = OS.get_cmdline_args()
+	var i = 0
+	while i < args.size():
+		var a = String(args[i])
+		if a == "--mission":
+			if i + 1 >= args.size():
+				push_warning("QA --mission needs a value (0-based mission index)")
+				return -1
+			var nxt = String(args[i + 1])
+			if not nxt.is_valid_integer():
+				push_warning("QA --mission value is not an integer: %s" % nxt)
+				return -1
+			return int(nxt)
+		if a.begins_with("--mission="):
+			var tail = a.substr(String("--mission=").length())
+			if tail.empty() or not tail.is_valid_integer():
+				push_warning("QA --mission= expects integer (0-based mission index)")
+				return -1
+			return int(tail)
+		i += 1
+	return -1

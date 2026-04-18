@@ -1,0 +1,23 @@
+[remap]
+
+importer="wav"
+type="AudioStreamSample"
+path="res://.import/m22_intro_ryder.wav-15b2deb02b1e58e1cd07ce092a2e5d8b.sample"
+
+[deps]
+
+source_file="res://assets/audio/voice/m22_intro_ryder.wav"
+dest_files=[ "res://.import/m22_intro_ryder.wav-15b2deb02b1e58e1cd07ce092a2e5d8b.sample" ]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=0
