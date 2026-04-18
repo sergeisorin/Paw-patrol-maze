@@ -403,6 +403,14 @@ func _show_pause_menu() -> void:
 	resume_btn.connect("pressed", self, "_resume")
 	inner.add_child(resume_btn)
 
+	var restart_btn = Button.new()
+	restart_btn.text = "НАЧАТЬ СНАЧАЛА"
+	restart_btn.rect_min_size = Vector2(400, 80)
+	restart_btn.add_font_override("font", GameManager.make_font(32))
+	restart_btn.pause_mode = PAUSE_MODE_PROCESS
+	restart_btn.connect("pressed", self, "_restart_from_beginning")
+	inner.add_child(restart_btn)
+
 	var menu_btn = Button.new()
 	menu_btn.text = "В МЕНЮ"
 	menu_btn.rect_min_size = Vector2(400, 80)
@@ -431,3 +439,14 @@ func _back_to_menu() -> void:
 		_pause_layer.queue_free()
 		_pause_layer = null
 	MissionManager.go_to_main_menu()
+
+func _restart_from_beginning() -> void:
+	_paused = false
+	get_tree().paused = false
+	HintManager.clear_all()
+	DialogueManager.hide_dialogue()
+	if _pause_layer and is_instance_valid(_pause_layer):
+		_pause_layer.queue_free()
+		_pause_layer = null
+	GameManager.reset_game()
+	MissionManager.load_mission(0)
