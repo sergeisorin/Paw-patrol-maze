@@ -26,6 +26,11 @@ jobs:
           Get-ChildItem C:\godot
           Write-Output "Godot ready"
 
+      - name: Install Mesa3D (software OpenGL for headless CI)
+        uses: f3d-app/install-mesa-windows-action@v1
+        with:
+          path: C:\godot
+
       - name: Install Export Templates
         shell: pwsh
         run: |
