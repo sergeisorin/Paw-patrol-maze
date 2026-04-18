@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://scripts/maze/Mission16_ZumaTreasure.gd" type="Script" id=1]
+
+[node name="Mission16" type="Node2D"]
+script = ExtResource( 1 )

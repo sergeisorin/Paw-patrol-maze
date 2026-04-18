@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://scripts/maze/Mission17_RubbleBridge.gd" type="Script" id=1]
+
+[node name="Mission17" type="Node2D"]
+script = ExtResource( 1 )

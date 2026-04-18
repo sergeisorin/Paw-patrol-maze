@@ -47,9 +47,7 @@ func _play_celebration() -> void:
 	DialogueManager.play_sequence([
 		{"speaker": "Гонщик", "text": "Мы добрались до Базы!", "duration": 3.0, "voice": "res://assets/audio/voice/m7_celeb_chase.wav"},
 		{"speaker": "Райдер", "text": "Все щенки в сборе! Ты настоящий герой!", "duration": 3.5, "voice": "res://assets/audio/voice/m7_celeb_ryder1.wav"},
-		{"speaker": "Райдер", "text": "Спасибо за помощь! Щенячий Патруль — вперёд!", "duration": 4.0, "voice": "res://assets/audio/voice/m7_celeb_ryder2.wav"},
 	])
 	yield(DialogueManager, "dialogue_finished")
-	yield(get_tree().create_timer(2.0), "timeout")
-	GameManager.complete_mission(mission_index)
-	MissionManager.go_to_main_menu()
+	yield(get_tree().create_timer(1.0), "timeout")
+	MissionManager.finish_mission()
