@@ -88,17 +88,17 @@ func _show_visual_dialogue(speaker: String, text: String, icon: String) -> void:
 
 func _create_dialogue_ui(speaker: String, text: String) -> Control:
 	var panel = PanelContainer.new()
-	panel.anchor_left = 0.0
-	panel.anchor_right = 1.0
-	panel.anchor_top = 0.88
-	panel.anchor_bottom = 1.0
+	panel.anchor_left = 0.02
+	panel.anchor_right = 0.98
+	panel.anchor_top = 0.85
+	panel.anchor_bottom = 0.96
 
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color(0.1, 0.1, 0.25, 0.92)
-	style.corner_radius_top_left = 0
-	style.corner_radius_top_right = 0
-	style.corner_radius_bottom_left = 0
-	style.corner_radius_bottom_right = 0
+	style.corner_radius_top_left = 12
+	style.corner_radius_top_right = 12
+	style.corner_radius_bottom_left = 12
+	style.corner_radius_bottom_right = 12
 	style.content_margin_left = 24
 	style.content_margin_right = 24
 	style.content_margin_top = 8

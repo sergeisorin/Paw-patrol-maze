@@ -133,7 +133,7 @@ func _show_completion_card() -> void:
 	praise.valign = Label.VALIGN_CENTER
 	praise.anchor_left = 0.1
 	praise.anchor_right = 0.9
-	praise.anchor_top = 0.02
+	praise.anchor_top = 0.05
 	praise.anchor_bottom = 0.16
 	praise.add_font_override("font", GameManager.make_font(52))
 	praise.add_color_override("font_color", Color(1.0, 0.95, 0.4))

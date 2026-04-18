@@ -11,11 +11,14 @@ var _finishing: bool = false
 var _reward_finished_flag: bool = false
 var _collectibles_picked: int = 0
 var _collectible_label: Label = null
+var _pause_layer: CanvasLayer = null
+var _paused: bool = false
 
 var MazeGridScript = preload("res://scripts/maze/MazeGrid.gd")
 var MazePlayerScript = preload("res://scripts/maze/MazePlayer.gd")
 
 func _ready() -> void:
+	pause_mode = PAUSE_MODE_PROCESS
 	MissionManager.start_playing()
 	AudioManager.play_music(_get_music_track())
 	_play_intro()
@@ -266,8 +269,8 @@ func _create_goal_indicator() -> void:
 	goal_label.align = Label.ALIGN_CENTER
 	goal_label.anchor_left = 0.3
 	goal_label.anchor_right = 0.7
-	goal_label.anchor_top = 0.02
-	goal_label.anchor_bottom = 0.08
+	goal_label.anchor_top = 0.05
+	goal_label.anchor_bottom = 0.11
 
 	goal_label.add_font_override("font", GameManager.make_font(32))
 	goal_label.add_color_override("font_color", Color(1.0, 0.95, 0.5))
@@ -323,3 +326,108 @@ func _get_collected_text() -> String:
 	if _maze:
 		return str(_maze.get_collected_count()) + "/" + str(_maze.get_total_collectibles())
 	return "0/0"
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _finishing:
+		return
+	if event.is_action_pressed("back") or event.is_action_pressed("pause"):
+		if _paused:
+			_resume()
+		else:
+			_show_pause_menu()
+
+func _show_pause_menu() -> void:
+	if _paused:
+		return
+	_paused = true
+	get_tree().paused = true
+
+	_pause_layer = CanvasLayer.new()
+	_pause_layer.layer = 92
+	_pause_layer.pause_mode = PAUSE_MODE_PROCESS
+	add_child(_pause_layer)
+
+	var dim = ColorRect.new()
+	dim.color = Color(0.0, 0.0, 0.0, 0.6)
+	dim.anchor_right = 1.0
+	dim.anchor_bottom = 1.0
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_pause_layer.add_child(dim)
+
+	var vbox = VBoxContainer.new()
+	vbox.anchor_left = 0.25
+	vbox.anchor_right = 0.75
+	vbox.anchor_top = 0.25
+	vbox.anchor_bottom = 0.75
+	vbox.alignment = VBoxContainer.ALIGN_CENTER
+	vbox.add_constant_override("separation", 30)
+	vbox.pause_mode = PAUSE_MODE_PROCESS
+	_pause_layer.add_child(vbox)
+
+	var panel = PanelContainer.new()
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.15, 0.12, 0.3, 0.92)
+	style.corner_radius_top_left = 24
+	style.corner_radius_top_right = 24
+	style.corner_radius_bottom_left = 24
+	style.corner_radius_bottom_right = 24
+	style.content_margin_left = 40
+	style.content_margin_right = 40
+	style.content_margin_top = 30
+	style.content_margin_bottom = 30
+	style.border_width_top = 4
+	style.border_width_bottom = 4
+	style.border_width_left = 4
+	style.border_width_right = 4
+	style.border_color = Color(1.0, 0.85, 0.2)
+	panel.add_stylebox_override("panel", style)
+	vbox.add_child(panel)
+
+	var inner = VBoxContainer.new()
+	inner.alignment = VBoxContainer.ALIGN_CENTER
+	inner.add_constant_override("separation", 24)
+	panel.add_child(inner)
+
+	var title = Label.new()
+	title.text = "ПАУЗА"
+	title.align = Label.ALIGN_CENTER
+	title.add_font_override("font", GameManager.make_font(48))
+	title.add_color_override("font_color", Color(1.0, 0.95, 0.4))
+	inner.add_child(title)
+
+	var resume_btn = Button.new()
+	resume_btn.text = "ПРОДОЛЖИТЬ"
+	resume_btn.rect_min_size = Vector2(400, 80)
+	resume_btn.add_font_override("font", GameManager.make_font(32))
+	resume_btn.pause_mode = PAUSE_MODE_PROCESS
+	resume_btn.connect("pressed", self, "_resume")
+	inner.add_child(resume_btn)
+
+	var menu_btn = Button.new()
+	menu_btn.text = "В МЕНЮ"
+	menu_btn.rect_min_size = Vector2(400, 80)
+	menu_btn.add_font_override("font", GameManager.make_font(32))
+	menu_btn.pause_mode = PAUSE_MODE_PROCESS
+	menu_btn.connect("pressed", self, "_back_to_menu")
+	inner.add_child(menu_btn)
+
+	resume_btn.grab_focus()
+
+func _resume() -> void:
+	if not _paused:
+		return
+	_paused = false
+	get_tree().paused = false
+	if _pause_layer and is_instance_valid(_pause_layer):
+		_pause_layer.queue_free()
+		_pause_layer = null
+
+func _back_to_menu() -> void:
+	_paused = false
+	get_tree().paused = false
+	HintManager.clear_all()
+	DialogueManager.hide_dialogue()
+	if _pause_layer and is_instance_valid(_pause_layer):
+		_pause_layer.queue_free()
+		_pause_layer = null
+	MissionManager.go_to_main_menu()
