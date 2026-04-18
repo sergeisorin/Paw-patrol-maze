@@ -21,7 +21,8 @@ Thumbs.db
 *.swp
 *.swo
 *~
-.cursor/
+.cursor/*
+!.cursor/rules/
 
 # Scripts
 fix_sprites.py
