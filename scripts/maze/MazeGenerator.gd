@@ -183,11 +183,13 @@ static func _place_entities(maze: Array, width: int, height: int, level: int, rn
 		walker = parents[walker]
 
 	var dead_ends_off_path = []
+	var all_off_path = []
 	for c in path_cells:
 		if c == start_pos or c == goal_pos:
 			continue
 		if path_set.has(c):
 			continue
+		all_off_path.append(c)
 		var pn = _path_neighbor_count(maze, width, height, c)
 		if pn == 1:
 			dead_ends_off_path.append(c)
@@ -195,26 +197,29 @@ static func _place_entities(maze: Array, width: int, height: int, level: int, rn
 	_shuffle_with_rng(dead_ends_off_path, rng)
 
 	var surprise_budget = int(clamp(level / 5, 0, 4))
-	var collectible_target = int(clamp(1 + level / 5, 1, 8))
+	# At least 2 bones on side branches; grows with mission (level == mission index).
+	var collectible_target = int(clamp(2 + level / 2, 2, 10))
 	var chosen_surprises = min(surprise_budget, dead_ends_off_path.size())
-	var chosen_collect = min(collectible_target, dead_ends_off_path.size() - chosen_surprises)
 
-	var ix = 0
 	var surprise_cells = []
 	for i in chosen_surprises:
-		if ix >= dead_ends_off_path.size():
-			break
-		surprise_cells.append(dead_ends_off_path[ix])
-		ix += 1
+		surprise_cells.append(dead_ends_off_path[i])
 
+	var surprise_set = {}
+	for s in surprise_cells:
+		surprise_set[s] = true
+
+	var collect_pool = []
+	for c in all_off_path:
+		if surprise_set.has(c):
+			continue
+		collect_pool.append(c)
+	_shuffle_with_rng(collect_pool, rng)
+
+	var chosen_collect = min(collectible_target, collect_pool.size())
 	var collectible_cells = []
 	for i in chosen_collect:
-		while ix < dead_ends_off_path.size() and dead_ends_off_path[ix] in surprise_cells:
-			ix += 1
-		if ix >= dead_ends_off_path.size():
-			break
-		collectible_cells.append(dead_ends_off_path[ix])
-		ix += 1
+		collectible_cells.append(collect_pool[i])
 
 	for y in height:
 		for x in width:
