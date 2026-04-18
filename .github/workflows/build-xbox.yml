@@ -1,0 +1,202 @@
+name: Build Xbox UWP
+
+on:
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: "3.6-stable"
+  PUBLISHER_NAME: "PawPatrolMaze"
+  CERT_PASS: "GodotXboxBuild"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Godot 3.6
+        shell: pwsh
+        run: |
+          $url = "https://github.com/godotengine/godot/releases/download/${{ env.GODOT_VERSION }}/Godot_v${{ env.GODOT_VERSION }}_win64.exe.zip"
+          Write-Output "Downloading Godot from $url"
+          Invoke-WebRequest -Uri $url -OutFile C:\godot.zip
+          Expand-Archive C:\godot.zip -DestinationPath C:\godot
+          Write-Output "Godot ready at C:\godot"
+
+      - name: Install Export Templates
+        shell: pwsh
+        run: |
+          $templateDir = "$env:APPDATA\Godot\export_templates\3.6.stable"
+          New-Item -ItemType Directory -Path $templateDir -Force | Out-Null
+          $url = "https://github.com/godotengine/godot/releases/download/${{ env.GODOT_VERSION }}/Godot_v${{ env.GODOT_VERSION }}_export_templates.tpz"
+          Write-Output "Downloading export templates (~600MB)..."
+          Invoke-WebRequest -Uri $url -OutFile C:\templates.zip
+          Expand-Archive C:\templates.zip -DestinationPath C:\temp_templates -Force
+          Copy-Item C:\temp_templates\templates\* $templateDir -Recurse -Force
+          $uwpTemplates = Get-ChildItem $templateDir -Filter "uwp*"
+          Write-Output "UWP templates found: $($uwpTemplates.Count)"
+          $uwpTemplates | ForEach-Object { Write-Output "  - $($_.Name)" }
+
+      - name: Generate UWP Export Preset
+        shell: pwsh
+        run: |
+          $preset = @"
+          [preset.0]
+
+          name="UWP"
+          platform="UWP"
+          runnable=true
+          custom_features=""
+          export_filter="all_resources"
+          include_filter=""
+          exclude_filter=""
+          export_path=""
+          patch_list=PoolStringArray(  )
+          script_export_mode=1
+          script_encryption_key=""
+
+          [preset.0.options]
+
+          custom_template/debug=""
+          custom_template/release=""
+          architecture/target=2
+          signing/certificate=""
+          signing/password=""
+          signing/algorithm=2
+          package/display_name="Paw Patrol Maze"
+          package/short_name="PawPatrolMaze"
+          package/unique_name="PawPatrolMaze"
+          package/description="Paw Patrol Maze Adventure"
+          package/publisher="CN=${{ env.PUBLISHER_NAME }}"
+          package/publisher_display_name="${{ env.PUBLISHER_NAME }}"
+          identity/product_guid="3159a24f-700c-4c29-8c5b-27c962dba839"
+          identity/publisher_guid="3159a24f-700c-4c29-8c5b-27c962dba839"
+          tiles/show_name_on_square150x150=false
+          tiles/show_name_on_wide310x150=false
+          tiles/show_name_on_square310x310=false
+          images/background_color="transparent"
+          "@
+          $preset | Set-Content -Path export_presets.cfg -Encoding UTF8
+          Write-Output "Export preset created"
+
+      - name: Import Project Resources
+        shell: pwsh
+        run: |
+          Write-Output "Running Godot editor to import resources..."
+          $godot = "C:\godot\Godot_v${{ env.GODOT_VERSION }}_win64.exe"
+          $proc = Start-Process -FilePath $godot -ArgumentList "--editor", "--quit", "--path", "${{ github.workspace }}" -PassThru
+          $finished = $proc | Wait-Process -Timeout 180 -ErrorAction SilentlyContinue -PassThru
+          if (!$proc.HasExited) {
+            Write-Output "Import timed out after 180s, killing..."
+            $proc.Kill()
+          } else {
+            Write-Output "Import exited with code $($proc.ExitCode)"
+          }
+          Start-Sleep -Seconds 3
+          if (Test-Path ".import") {
+            $count = (Get-ChildItem .import -Recurse -File).Count
+            Write-Output "Imported $count resource files"
+          } else {
+            Write-Warning "No .import directory found - resources may not have imported"
+          }
+
+      - name: Export UWP Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path build -Force | Out-Null
+          $godot = "C:\godot\Godot_v${{ env.GODOT_VERSION }}_win64.exe"
+          $output = "${{ github.workspace }}\build\PawPatrolMaze.appx"
+          Write-Output "Exporting UWP package..."
+          & $godot --path "${{ github.workspace }}" --export "UWP" $output
+          if (Test-Path $output) {
+            $size = [math]::Round((Get-Item $output).Length / 1MB, 2)
+            Write-Output "Export successful: $size MB"
+          } else {
+            Write-Error "Export failed - no .appx file produced"
+            exit 1
+          }
+
+      - name: Repackage and Sign APPX
+        shell: pwsh
+        run: |
+          $appxFile = "${{ github.workspace }}\build\PawPatrolMaze.appx"
+          $workDir = "$env:TEMP\appx-repack"
+          $extractDir = "$workDir\game"
+          $toolsDir = "$workDir\tools"
+
+          New-Item -ItemType Directory -Path $extractDir -Force | Out-Null
+          New-Item -ItemType Directory -Path $toolsDir -Force | Out-Null
+
+          # Download ANGLE DLLs (required for UWP graphics)
+          Write-Output "Downloading ANGLE DLLs..."
+          Invoke-WebRequest -Uri "https://globalcdn.nuget.org/packages/angle.windowsstore.2.1.13.nupkg" -OutFile "$env:TEMP\angle.zip"
+          Expand-Archive "$env:TEMP\angle.zip" -DestinationPath $toolsDir -Force
+
+          # Download Windows SDK build tools (makeappx, signtool)
+          Write-Output "Downloading SDK build tools..."
+          Invoke-WebRequest -Uri "https://globalcdn.nuget.org/packages/microsoft.windows.sdk.buildtools.10.0.22621.756.nupkg" -OutFile "$env:TEMP\sdk.zip"
+          Expand-Archive "$env:TEMP\sdk.zip" -DestinationPath $toolsDir -Force
+
+          $makeappx = "$toolsDir\bin\10.0.22621.0\x64\makeappx.exe"
+          $signtool = "$toolsDir\bin\10.0.22621.0\x64\signtool.exe"
+          $libEGL = "$toolsDir\bin\UAP\x64\libEGL.dll"
+          $libGLES = "$toolsDir\bin\UAP\x64\libGLESv2.dll"
+
+          foreach ($tool in @($makeappx, $signtool, $libEGL, $libGLES)) {
+            if (!(Test-Path $tool)) { Write-Error "Missing: $tool"; exit 1 }
+          }
+          Write-Output "All tools ready"
+
+          # Extract the APPX (it's a ZIP internally)
+          Write-Output "Extracting APPX for repackaging..."
+          $appxZip = "$appxFile.zip"
+          Rename-Item $appxFile $appxZip -Force
+          Expand-Archive $appxZip -DestinationPath $extractDir -Force
+
+          # Copy ANGLE DLLs into the package
+          Copy-Item $libEGL $extractDir -Force
+          Copy-Item $libGLES $extractDir -Force
+
+          # Repackage with makeappx
+          Write-Output "Repackaging with makeappx..."
+          & $makeappx pack /d $extractDir /p $appxFile /o
+          if (!(Test-Path $appxFile)) {
+            Rename-Item $appxZip $appxFile -Force
+            Write-Error "makeappx repackaging failed"
+            exit 1
+          }
+          Remove-Item $appxZip -Force -ErrorAction SilentlyContinue
+          Remove-Item $extractDir -Recurse -Force
+
+          # Create self-signed certificate
+          Write-Output "Creating self-signed certificate for CN=${{ env.PUBLISHER_NAME }}..."
+          $securePass = ConvertTo-SecureString -String "${{ env.CERT_PASS }}" -AsPlainText -Force
+          $cert = New-SelfSignedCertificate `
+            -CertStoreLocation Cert:\CurrentUser\My `
+            -Subject "CN=${{ env.PUBLISHER_NAME }}" `
+            -HashAlgorithm SHA256 `
+            -TextExtension @(
+              "2.5.29.37={text}1.3.6.1.5.5.7.3.3,1.3.6.1.4.1.311.84.3.1",
+              "2.5.29.19={text}false"
+            )
+          $certFile = "$workDir\cert.pfx"
+          Export-PfxCertificate -FilePath $certFile -Password $securePass -Cert $cert | Out-Null
+
+          # Sign the APPX
+          Write-Output "Signing APPX..."
+          & $signtool sign /fd SHA256 /a /f $certFile /p "${{ env.CERT_PASS }}" $appxFile
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Signing failed with exit code $LASTEXITCODE"
+            exit 1
+          }
+
+          $finalSize = [math]::Round((Get-Item $appxFile).Length / 1MB, 2)
+          Write-Output "Build complete! Final size: $finalSize MB"
+
+      - name: Upload APPX
+        uses: actions/upload-artifact@v4
+        with:
+          name: PawPatrolMaze-Xbox
+          path: build/PawPatrolMaze.appx
