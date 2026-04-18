@@ -6,6 +6,7 @@ var _current_music: String = ""
 
 var sfx_paths: Dictionary = {
 	"tap": "res://assets/audio/sfx/tap_confirm.wav",
+	"wall_bump": "res://assets/audio/sfx/stone_place.wav",
 	"sparkle": "res://assets/audio/sfx/sparkle.wav",
 	"reward": "res://assets/audio/sfx/reward_chime.wav",
 	"swoosh": "res://assets/audio/sfx/swoosh.wav",
@@ -40,6 +41,12 @@ func _ready() -> void:
 		if stream:
 			player.stream = stream
 		_sfx_players[key] = player
+
+	# Solid thump + louder so wall hits cut through ambience (distinct from UI tap).
+	if _sfx_players.has("wall_bump"):
+		var wall = _sfx_players["wall_bump"]
+		wall.volume_db = 6
+		wall.pitch_scale = 1.35
 
 func play_sfx(sfx_name: String) -> void:
 	if sfx_name in _sfx_players:

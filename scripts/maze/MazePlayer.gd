@@ -114,7 +114,7 @@ func _rotate_to(dir: Vector2) -> void:
 func _try_move(dir: Vector2) -> void:
 	var target = grid_pos + dir
 	if not _maze.is_walkable(target):
-		AudioManager.play_sfx("tap")
+		AudioManager.play_sfx("wall_bump")
 		_bump_animation(dir)
 		return
 	_is_moving = true
