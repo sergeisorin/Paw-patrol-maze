@@ -215,8 +215,11 @@ func _build_maze() -> void:
 	var data = _get_maze_data()
 	_maze.setup(int(maze_size.x), int(maze_size.y), data, _get_wall_color(), _get_path_color(), _get_tile_style(), _get_goal_sprite())
 
-	_maze.connect("collectible_picked", self, "_on_collectible_picked")
-	_maze.connect("goal_reached", self, "_on_goal_reached")
+	if not _maze.is_connected("collectible_picked", self, "_on_collectible_picked"):
+		_maze.connect("collectible_picked", self, "_on_collectible_picked")
+	if not _maze.is_connected("goal_reached", self, "_on_goal_reached"):
+		_maze.connect("goal_reached", self, "_on_goal_reached")
+	_collectibles_picked = 0
 
 	var pup_info = GameManager.get_pup(pup_id)
 	var pup_color = pup_info.get("color", Color.blue)
@@ -263,8 +266,9 @@ func _create_goal_indicator() -> void:
 	goal_layer.layer = 50
 	add_child(goal_layer)
 
-	var goal_label = Label.new()
 	var data = GameManager.get_mission(mission_index)
+
+	var goal_label = Label.new()
 	goal_label.text = data.get("goal_text", "")
 	goal_label.align = Label.ALIGN_CENTER
 	goal_label.anchor_left = 0.3
@@ -276,6 +280,53 @@ func _create_goal_indicator() -> void:
 	goal_label.add_color_override("font_color", Color(1.0, 0.95, 0.5))
 	goal_layer.add_child(goal_label)
 
+	var bone_row = HBoxContainer.new()
+	bone_row.anchor_left = 0.0
+	bone_row.anchor_right = 0.0
+	bone_row.anchor_top = 0.0
+	bone_row.anchor_bottom = 0.0
+	bone_row.margin_left = 20
+	bone_row.margin_top = 12
+	bone_row.add_constant_override("separation", 10)
+	bone_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	goal_layer.add_child(bone_row)
+
+	var bone_tex = load("res://assets/sprites/objects/collectible_bone.png")
+	if bone_tex:
+		var bone_icon = TextureRect.new()
+		bone_icon.texture = bone_tex
+		bone_icon.rect_min_size = Vector2(52, 52)
+		bone_icon.expand = true
+		bone_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		bone_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bone_row.add_child(bone_icon)
+
+	var count_chip = PanelContainer.new()
+	count_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var chip_bg = StyleBoxFlat.new()
+	chip_bg.bg_color = Color(0.15, 0.12, 0.28, 0.96)
+	chip_bg.corner_radius_top_left = 10
+	chip_bg.corner_radius_top_right = 10
+	chip_bg.corner_radius_bottom_left = 10
+	chip_bg.corner_radius_bottom_right = 10
+	chip_bg.content_margin_left = 12
+	chip_bg.content_margin_right = 12
+	chip_bg.content_margin_top = 8
+	chip_bg.content_margin_bottom = 8
+	count_chip.add_stylebox_override("panel", chip_bg)
+
+	_collectible_label = Label.new()
+	var count_font = GameManager.make_font(36)
+	_collectible_label.add_font_override("font", count_font)
+	_collectible_label.add_color_override("font_color", Color(1.0, 0.95, 0.5))
+	_collectible_label.valign = Label.VALIGN_CENTER
+	_collectible_label.align = Label.ALIGN_CENTER
+	var count_box_w = count_font.get_string_size("99/99").x + 4
+	_collectible_label.rect_min_size = Vector2(count_box_w, 44)
+	count_chip.add_child(_collectible_label)
+	bone_row.add_child(count_chip)
+	_update_collectible_label()
+
 
 func _setup_hints() -> void:
 	HintManager.register_target(_player)
@@ -284,17 +335,36 @@ func _setup_hints() -> void:
 func _on_player_moved_hint(_pos) -> void:
 	HintManager.reset_timer(_player)
 
-func _on_collectible_picked(type: String) -> void:
-	_collectibles_picked += 1
+func _on_collectible_picked(_type: String) -> void:
+	if not is_instance_valid(_maze):
+		return
+	var actual = _maze.get_collected_count()
+	if actual <= _collectibles_picked:
+		return
+	var delta = actual - _collectibles_picked
+	_collectibles_picked = actual
 	AudioManager.play_sfx("bone_collect")
-	GameManager.collectibles_total += 1
+	GameManager.collectibles_total += delta
 	_update_collectible_label()
 
 func _update_collectible_label() -> void:
-	if is_instance_valid(_collectible_label) and is_instance_valid(_maze):
-		var collected = _maze.get_collected_count()
-		var total = _maze.get_total_collectibles()
-		_collectible_label.text = str(collected) + "/" + str(total)
+	if not is_instance_valid(_collectible_label):
+		return
+	var collected = _collectibles_picked
+	var total = 0
+	if is_instance_valid(_maze):
+		collected = _maze.get_collected_count()
+		total = _maze.get_total_collectibles()
+		_collectibles_picked = collected
+	var next_text = str(collected) + "/" + str(total)
+	_collectible_label.text = next_text
+	var chip = _collectible_label.get_parent()
+	if chip:
+		chip.update()
+	_collectible_label.update()
+	var row = chip.get_parent() if chip else null
+	if row:
+		row.queue_sort()
 
 func _on_goal_reached() -> void:
 	if _finishing:

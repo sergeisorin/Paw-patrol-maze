@@ -351,10 +351,11 @@ func is_walkable(grid_pos: Vector2) -> bool:
 	return cells[int(grid_pos.y)][int(grid_pos.x)] != Cell.WALL
 
 func try_collect(grid_pos: Vector2) -> bool:
-	if grid_pos in collectible_cells and not grid_pos in _collected:
-		_collected.append(grid_pos)
-		if grid_pos in _collectible_nodes:
-			var node = _collectible_nodes[grid_pos]
+	var cell_key = Vector2(int(round(grid_pos.x)), int(round(grid_pos.y)))
+	if cell_key in collectible_cells and not cell_key in _collected:
+		_collected.append(cell_key)
+		if cell_key in _collectible_nodes:
+			var node = _collectible_nodes[cell_key]
 			_spawn_pickup_burst(node.position)
 			var tween = Tween.new()
 			node.add_child(tween)
