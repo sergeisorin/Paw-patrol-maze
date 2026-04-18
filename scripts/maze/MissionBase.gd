@@ -17,40 +17,151 @@ var MazePlayerScript = preload("res://scripts/maze/MazePlayer.gd")
 
 func _ready() -> void:
 	MissionManager.start_playing()
-	AudioManager.play_music("adventure")
+	AudioManager.play_music(_get_music_track())
 	_play_intro()
 
 func _play_intro() -> void:
-	_show_mission_title()
+	var intro_layer = _create_intro_backdrop()
 	yield(get_tree().create_timer(2.0), "timeout")
 	_play_intro_dialogue()
 	yield(DialogueManager, "dialogue_finished")
+	var fade_tween = Tween.new()
+	intro_layer.add_child(fade_tween)
+	fade_tween.interpolate_property(intro_layer, "modulate:a", 1.0, 0.0, 0.4, Tween.TRANS_QUAD, Tween.EASE_IN)
+	fade_tween.start()
+	yield(fade_tween, "tween_all_completed")
+	intro_layer.queue_free()
 	_build_maze()
 
-func _show_mission_title() -> void:
+func _create_intro_backdrop() -> CanvasLayer:
 	var layer = CanvasLayer.new()
 	layer.layer = 80
 	add_child(layer)
 
-	var label = Label.new()
-	label.text = mission_title
-	label.align = Label.ALIGN_CENTER
-	label.valign = Label.VALIGN_CENTER
-	label.anchor_left = 0.0
-	label.anchor_right = 1.0
-	label.anchor_top = 0.35
-	label.anchor_bottom = 0.65
+	var card = Control.new()
+	card.anchor_right = 1.0
+	card.anchor_bottom = 1.0
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(card)
 
-	label.add_font_override("font", GameManager.make_font(48))
-	label.add_color_override("font_color", Color.white)
-	layer.add_child(label)
+	var data = GameManager.get_mission(mission_index)
+	var zone = data.get("zone", "town")
+	var zc = GameManager.get_zone_colors(zone)
 
+	var bg = ColorRect.new()
+	bg.color = zc.bg
+	bg.anchor_right = 1.0
+	bg.anchor_bottom = 1.0
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(bg)
+
+	_add_intro_stripe(card, zc.accent, 0.0, 0.12)
+	_add_intro_stripe(card, zc.accent, 0.88, 1.0)
+
+	_spawn_intro_sparkles(card, zc.star)
+
+	var pup_tex = load("res://assets/sprites/pups/" + pup_id + ".png")
+	if pup_tex:
+		var portrait = TextureRect.new()
+		portrait.texture = pup_tex
+		portrait.expand = true
+		portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		portrait.anchor_left = 0.3
+		portrait.anchor_right = 0.7
+		portrait.anchor_top = 0.05
+		portrait.anchor_bottom = 0.52
+		portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(portrait)
+
+	var title = Label.new()
+	title.text = mission_title
+	title.align = Label.ALIGN_CENTER
+	title.valign = Label.VALIGN_CENTER
+	title.anchor_left = 0.05
+	title.anchor_right = 0.95
+	title.anchor_top = 0.54
+	title.anchor_bottom = 0.72
+	title.add_font_override("font", GameManager.make_font(48))
+	title.add_color_override("font_color", Color.white)
+	card.add_child(title)
+
+	var pup_info = GameManager.get_pup(pup_id)
+	var name_label = Label.new()
+	name_label.text = pup_info.get("name", "")
+	name_label.align = Label.ALIGN_CENTER
+	name_label.valign = Label.VALIGN_CENTER
+	name_label.anchor_left = 0.2
+	name_label.anchor_right = 0.8
+	name_label.anchor_top = 0.73
+	name_label.anchor_bottom = 0.85
+	name_label.add_font_override("font", GameManager.make_font(36))
+	name_label.add_color_override("font_color", zc.text_accent)
+	card.add_child(name_label)
+
+	var badge_tex = load("res://assets/sprites/objects/paw_badge.png")
+	if badge_tex:
+		for pos in [Vector2(0.04, 0.14), Vector2(0.89, 0.14), Vector2(0.04, 0.82), Vector2(0.89, 0.82)]:
+			var badge = TextureRect.new()
+			badge.texture = badge_tex
+			badge.expand = true
+			badge.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			badge.anchor_left = pos.x
+			badge.anchor_right = pos.x + 0.07
+			badge.anchor_top = pos.y
+			badge.anchor_bottom = pos.y + 0.09
+			badge.modulate = Color(zc.star.r, zc.star.g, zc.star.b, 0.5)
+			badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			card.add_child(badge)
+
+	card.modulate = Color(1, 1, 1, 0)
 	var tween = Tween.new()
-	label.add_child(tween)
-	tween.interpolate_property(label, "modulate:a", 0.0, 1.0, 0.5, Tween.TRANS_QUAD, Tween.EASE_OUT)
-	tween.interpolate_property(label, "modulate:a", 1.0, 0.0, 0.5, Tween.TRANS_QUAD, Tween.EASE_IN, 1.5)
+	card.add_child(tween)
+	tween.interpolate_property(card, "modulate:a", 0.0, 1.0, 0.3, Tween.TRANS_QUAD, Tween.EASE_OUT)
 	tween.start()
-	tween.connect("tween_all_completed", layer, "queue_free")
+
+	return layer
+
+func _add_intro_stripe(parent: Control, color: Color, top: float, bottom: float) -> void:
+	var stripe = ColorRect.new()
+	stripe.color = color
+	stripe.anchor_right = 1.0
+	stripe.anchor_top = top
+	stripe.anchor_bottom = bottom
+	stripe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(stripe)
+
+func _spawn_intro_sparkles(parent: Control, color: Color) -> void:
+	var badge_tex = load("res://assets/sprites/objects/paw_badge.png")
+	for i in range(14):
+		var x = rand_range(0.03, 0.90)
+		var y = rand_range(0.03, 0.90)
+		var s = rand_range(0.02, 0.045)
+		var sparkle
+		if badge_tex:
+			sparkle = TextureRect.new()
+			sparkle.texture = badge_tex
+			sparkle.expand = true
+			sparkle.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		else:
+			sparkle = ColorRect.new()
+			sparkle.color = color
+		sparkle.anchor_left = x
+		sparkle.anchor_right = x + s
+		sparkle.anchor_top = y
+		sparkle.anchor_bottom = y + s
+		var alpha = rand_range(0.12, 0.35)
+		sparkle.modulate = Color(color.r, color.g, color.b, alpha)
+		sparkle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		parent.add_child(sparkle)
+
+		var tw = Tween.new()
+		sparkle.add_child(tw)
+		var delay = rand_range(0.0, 0.6)
+		var peak = min(alpha * 3.0, 0.8)
+		tw.interpolate_property(sparkle, "modulate:a", alpha, peak, 0.35, Tween.TRANS_SINE, Tween.EASE_IN_OUT, delay)
+		tw.interpolate_property(sparkle, "modulate:a", peak, alpha, 0.35, Tween.TRANS_SINE, Tween.EASE_IN_OUT, delay + 0.35)
+		tw.repeat = true
+		tw.start()
 
 func _play_intro_dialogue() -> void:
 	DialogueManager.play_sequence([
@@ -69,7 +180,29 @@ func _get_wall_color() -> Color:
 func _get_path_color() -> Color:
 	return Color(0.85, 0.82, 0.7)
 
+func _get_music_track() -> String:
+	if mission_index % 2 == 1:
+		return "adventure2"
+	return "adventure"
+
+func _get_tile_style() -> String:
+	return "outdoor"
+
+func _get_goal_sprite() -> String:
+	return "goal_doghouse.png"
+
 func _build_maze() -> void:
+	var bg_layer = CanvasLayer.new()
+	bg_layer.name = "MazeBG"
+	bg_layer.layer = -1
+	add_child(bg_layer)
+	var bg_rect = ColorRect.new()
+	bg_rect.color = _get_wall_color().darkened(0.15)
+	bg_rect.anchor_right = 1.0
+	bg_rect.anchor_bottom = 1.0
+	bg_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg_layer.add_child(bg_rect)
+
 	var maze_size = _get_maze_size()
 	_maze = Node2D.new()
 	_maze.name = "MazeGrid"
@@ -77,7 +210,7 @@ func _build_maze() -> void:
 	add_child(_maze)
 
 	var data = _get_maze_data()
-	_maze.setup(int(maze_size.x), int(maze_size.y), data, _get_wall_color(), _get_path_color())
+	_maze.setup(int(maze_size.x), int(maze_size.y), data, _get_wall_color(), _get_path_color(), _get_tile_style(), _get_goal_sprite())
 
 	_maze.connect("collectible_picked", self, "_on_collectible_picked")
 	_maze.connect("goal_reached", self, "_on_goal_reached")
@@ -99,15 +232,25 @@ func _setup_camera() -> void:
 	_camera = Camera2D.new()
 	_camera.name = "MazeCamera"
 	_camera.current = true
-	_camera.zoom = Vector2(1.15, 1.15)
 	_player.add_child(_camera)
 
 	var maze_pixel_w = _maze.grid_width * _maze.CELL_SIZE
 	var maze_pixel_h = _maze.grid_height * _maze.CELL_SIZE
-	_camera.limit_left = -int(_maze.CELL_SIZE * 0.5)
-	_camera.limit_top = -int(_maze.CELL_SIZE * 0.5)
-	_camera.limit_right = maze_pixel_w + int(_maze.CELL_SIZE * 0.5)
-	_camera.limit_bottom = maze_pixel_h + int(_maze.CELL_SIZE * 0.5)
+
+	var viewport_w := 1920.0
+	var viewport_h := 1080.0
+	var usable_h := viewport_h * 0.92
+	var zoom_x = float(maze_pixel_w) / viewport_w
+	var zoom_y = float(maze_pixel_h) / usable_h
+	var fit_zoom = max(zoom_x, zoom_y) * 1.08
+	fit_zoom = clamp(fit_zoom, 0.65, 1.1)
+	_camera.zoom = Vector2(fit_zoom, fit_zoom)
+
+	var pad = _maze.CELL_SIZE * 2
+	_camera.limit_left = -pad
+	_camera.limit_top = -pad
+	_camera.limit_right = maze_pixel_w + pad
+	_camera.limit_bottom = maze_pixel_h + pad
 	_camera.smoothing_enabled = true
 	_camera.smoothing_speed = 8.0
 
@@ -140,7 +283,7 @@ func _on_player_moved_hint(_pos) -> void:
 
 func _on_collectible_picked(type: String) -> void:
 	_collectibles_picked += 1
-	AudioManager.play_sfx("sparkle")
+	AudioManager.play_sfx("bone_collect")
 	GameManager.collectibles_total += 1
 	_update_collectible_label()
 
@@ -154,7 +297,7 @@ func _on_goal_reached() -> void:
 	if _finishing:
 		return
 	_finishing = true
-	_player.set_process(false)
+	_player.disable()
 	HintManager.clear_all()
 	AudioManager.play_sfx("reward")
 	_player.play_victory_spin()

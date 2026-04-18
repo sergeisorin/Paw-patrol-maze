@@ -6,6 +6,7 @@ var grid_pos: Vector2 = Vector2.ZERO
 var _maze: Node = null
 var _tween: Tween = null
 var _is_moving: bool = false
+var _disabled: bool = false
 var _move_speed: float = 0.25
 var _sprite: Sprite = null
 var _pup_color: Color = Color(0.2, 0.3, 0.8)
@@ -43,7 +44,7 @@ func _create_sprite() -> void:
 	if tex:
 		_sprite.texture = tex
 		var tex_size = tex.get_size()
-		var target_size = 80.0
+		var target_size = 100.0
 		_sprite.scale = Vector2(target_size / tex_size.x, target_size / tex_size.y)
 	else:
 		var img = Image.new()
@@ -61,8 +62,24 @@ func _create_sprite() -> void:
 
 	add_child(_sprite)
 
+func disable() -> void:
+	if _disabled:
+		return
+	print("[MazePlayer] disable() called")
+	_disabled = true
+	_is_moving = true
+	set_process(false)
+	set_process_input(false)
+	set_process_unhandled_input(false)
+	if _tween:
+		_tween.stop_all()
+	if _bounce_tween:
+		_bounce_tween.stop_all()
+	if _idle_tween:
+		_idle_tween.stop_all()
+
 func _process(_delta: float) -> void:
-	if _is_moving or not _maze:
+	if _disabled or _is_moving or not _maze:
 		return
 
 	var dir = Vector2.ZERO
@@ -116,7 +133,11 @@ func _on_bump_done() -> void:
 
 func _on_move_tween_done() -> void:
 	_is_moving = false
-	_maze.check_goal(grid_pos)
+	print("[MazePlayer] move done at grid_pos=", grid_pos, " goal=", _maze.goal_cell)
+	var on_goal = _maze.check_goal(grid_pos)
+	if on_goal:
+		print("[MazePlayer] GOAL REACHED - disabling")
+		disable()
 
 func _bounce() -> void:
 	if _sprite:

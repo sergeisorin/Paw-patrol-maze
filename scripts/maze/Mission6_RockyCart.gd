@@ -21,6 +21,9 @@ func _get_wall_color() -> Color:
 func _get_path_color() -> Color:
 	return Color(0.8, 0.85, 0.75)
 
+func _get_goal_sprite() -> String:
+	return "goal_cart.png"
+
 func _get_maze_data() -> Array:
 	var W = 0; var P = 1; var S = 2; var G = 3; var C = 4; var D = 5
 	return [

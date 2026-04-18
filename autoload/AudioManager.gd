@@ -15,12 +15,14 @@ var sfx_paths: Dictionary = {
 	"cheer": "res://assets/audio/sfx/crowd_cheer.wav",
 	"confetti": "res://assets/audio/sfx/confetti.wav",
 	"hint": "res://assets/audio/sfx/hint_glow.wav",
+	"bone_collect": "res://assets/audio/sfx/bone_collect.wav",
 }
 
 var music_paths: Dictionary = {
 	"menu": "res://assets/audio/music/menu_theme.wav",
 	"adventure": "res://assets/audio/music/adventure_loop.wav",
 	"celebration": "res://assets/audio/music/celebration.wav",
+	"adventure2": "res://assets/audio/music/adventure2_loop.wav",
 }
 
 func _ready() -> void:

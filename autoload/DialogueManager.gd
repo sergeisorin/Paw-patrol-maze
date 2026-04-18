@@ -10,6 +10,16 @@ var _is_playing: bool = false
 var _current_queue: Array = []
 var _voice_player: AudioStreamPlayer = null
 
+var _speaker_sprites: Dictionary = {
+	"Райдер": "ryder",
+	"Гонщик": "chase",
+	"Маршал": "marshall",
+	"Скай": "skye",
+	"Зума": "zuma",
+	"Крепыш": "rubble",
+	"Рокки": "rocky",
+}
+
 func _ready() -> void:
 	_voice_player = AudioStreamPlayer.new()
 	_voice_player.volume_db = 3
@@ -105,6 +115,17 @@ func _create_dialogue_ui(speaker: String, text: String) -> Control:
 	panel.add_child(hbox)
 
 	if speaker != "":
+		var sprite_id = _speaker_sprites.get(speaker, "")
+		if sprite_id != "":
+			var portrait_tex = load("res://assets/sprites/pups/" + sprite_id + ".png")
+			if portrait_tex:
+				var portrait = TextureRect.new()
+				portrait.texture = portrait_tex
+				portrait.rect_min_size = Vector2(48, 48)
+				portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				portrait.expand = true
+				hbox.add_child(portrait)
+
 		var speaker_label = Label.new()
 		speaker_label.text = speaker + ":"
 		speaker_label.add_font_override("font", GameManager.make_font(26))

@@ -132,6 +132,17 @@ func advance_to_next_mission() -> void:
 	if current_mission < mission_data.size():
 		MissionManager.load_mission(current_mission)
 
+func get_zone_colors(zone: String) -> Dictionary:
+	var palettes = {
+		"town": {"bg": Color(0.25, 0.45, 0.8), "accent": Color(0.35, 0.55, 0.9), "star": Color(1.0, 0.9, 0.3), "text_accent": Color(1.0, 0.95, 0.5)},
+		"farm": {"bg": Color(0.35, 0.6, 0.25), "accent": Color(0.45, 0.7, 0.35), "star": Color(1.0, 0.9, 0.3), "text_accent": Color(1.0, 0.95, 0.5)},
+		"garden": {"bg": Color(0.7, 0.35, 0.55), "accent": Color(0.8, 0.45, 0.65), "star": Color(1.0, 0.85, 0.95), "text_accent": Color(1.0, 0.85, 0.95)},
+		"beach": {"bg": Color(0.2, 0.55, 0.7), "accent": Color(0.3, 0.65, 0.8), "star": Color(1.0, 0.95, 0.6), "text_accent": Color(1.0, 0.95, 0.5)},
+		"yard": {"bg": Color(0.7, 0.55, 0.2), "accent": Color(0.8, 0.65, 0.3), "star": Color(1.0, 1.0, 0.6), "text_accent": Color(1.0, 1.0, 0.7)},
+		"hill": {"bg": Color(0.4, 0.3, 0.65), "accent": Color(0.5, 0.4, 0.75), "star": Color(0.9, 0.8, 1.0), "text_accent": Color(0.92, 0.85, 1.0)},
+	}
+	return palettes.get(zone, palettes["town"])
+
 func reset_game() -> void:
 	current_mission = 0
 	missions_completed = []

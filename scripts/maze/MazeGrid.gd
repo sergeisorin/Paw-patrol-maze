@@ -28,22 +28,23 @@ var _bone_tex: Texture = null
 
 enum Cell { WALL, PATH, START, GOAL, COLLECTIBLE, DEAD_END_SURPRISE }
 
-func setup(width: int, height: int, maze_data: Array, theme_wall: Color = WALL_COLOR, theme_path: Color = PATH_COLOR, tile_style: String = "outdoor") -> void:
+func setup(width: int, height: int, maze_data: Array, theme_wall: Color = WALL_COLOR, theme_path: Color = PATH_COLOR, tile_style: String = "outdoor", goal_sprite_name: String = "goal_doghouse.png") -> void:
 	grid_width = width
 	grid_height = height
 	cells = maze_data
 	_wall_theme_color = theme_wall
 	_path_theme_color = theme_path
 	_tile_style = tile_style
-	_load_textures()
+	_load_textures(goal_sprite_name)
 	_build_visuals()
+	_build_filler(5)
 
-func _load_textures() -> void:
+func _load_textures(goal_sprite_name: String = "goal_doghouse.png") -> void:
 	var wall_suffix = "wall_tile.png" if _tile_style == "outdoor" else "wall_tile_indoor.png"
 	var path_suffix = "path_tile.png" if _tile_style == "outdoor" else "path_tile_indoor.png"
 	_wall_tex = load("res://assets/sprites/tiles/" + wall_suffix)
 	_path_tex = load("res://assets/sprites/tiles/" + path_suffix)
-	_goal_tex = load("res://assets/sprites/objects/goal_doghouse.png")
+	_goal_tex = load("res://assets/sprites/objects/" + goal_sprite_name)
 	_bone_tex = load("res://assets/sprites/objects/collectible_bone.png")
 
 func _build_visuals() -> void:
@@ -69,6 +70,27 @@ func _build_visuals() -> void:
 				_create_collectible(pos, Vector2(x, y))
 			elif cell_type == Cell.DEAD_END_SURPRISE:
 				_create_dead_end_surprise(pos, Vector2(x, y))
+
+func _build_filler(extra_cells: int) -> void:
+	for y in range(-extra_cells, grid_height + extra_cells):
+		for x in range(-extra_cells, grid_width + extra_cells):
+			if x >= 0 and x < grid_width and y >= 0 and y < grid_height:
+				continue
+			var pos = Vector2(x * CELL_SIZE + CELL_SIZE / 2, y * CELL_SIZE + CELL_SIZE / 2)
+			var sprite = Sprite.new()
+			if _wall_tex:
+				sprite.texture = _wall_tex
+				sprite.modulate = _wall_theme_color.lightened(0.4).darkened(0.1)
+			else:
+				var img = Image.new()
+				img.create(CELL_SIZE, CELL_SIZE, false, Image.FORMAT_RGBA8)
+				img.fill(_wall_theme_color.darkened(0.1))
+				var tex = ImageTexture.new()
+				tex.create_from_image(img, 0)
+				sprite.texture = tex
+			sprite.position = pos
+			sprite.z_index = -1
+			add_child(sprite)
 
 func _create_wall_tile(pos: Vector2) -> void:
 	var sprite = Sprite.new()
@@ -101,6 +123,12 @@ func _create_path_tile(pos: Vector2) -> void:
 	add_child(sprite)
 
 func _create_goal_marker(pos: Vector2) -> void:
+	var glow = _create_goal_glow()
+	glow.position = pos
+	glow.z_index = 4
+	add_child(glow)
+	_pulse_glow(glow)
+
 	_goal_sprite = Sprite.new()
 	if _goal_tex:
 		_goal_sprite.texture = _goal_tex
@@ -113,9 +141,40 @@ func _create_goal_marker(pos: Vector2) -> void:
 		tex.create_from_image(img, 0)
 		_goal_sprite.texture = tex
 	_goal_sprite.position = pos
+	_goal_sprite.scale = Vector2(1.2, 1.2)
 	_goal_sprite.z_index = 5
 	add_child(_goal_sprite)
 	_pulse_goal()
+
+func _create_goal_glow() -> Sprite:
+	var glow_size = 160
+	var img = Image.new()
+	img.create(glow_size, glow_size, false, Image.FORMAT_RGBA8)
+	img.lock()
+	var center = Vector2(glow_size / 2.0, glow_size / 2.0)
+	var radius = glow_size / 2.0
+	for px in range(glow_size):
+		for py in range(glow_size):
+			var dist = Vector2(px, py).distance_to(center)
+			if dist < radius:
+				var alpha = (1.0 - dist / radius) * 0.45
+				img.set_pixel(px, py, Color(1.0, 0.92, 0.2, alpha))
+	img.unlock()
+	var tex = ImageTexture.new()
+	tex.create_from_image(img, 0)
+	var sprite = Sprite.new()
+	sprite.texture = tex
+	return sprite
+
+func _pulse_glow(glow: Sprite) -> void:
+	var tween = Tween.new()
+	glow.add_child(tween)
+	tween.interpolate_property(glow, "scale", Vector2(0.9, 0.9), Vector2(1.3, 1.3), 1.0, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
+	tween.interpolate_property(glow, "scale", Vector2(1.3, 1.3), Vector2(0.9, 0.9), 1.0, Tween.TRANS_SINE, Tween.EASE_IN_OUT, 1.0)
+	tween.interpolate_property(glow, "modulate:a", 0.6, 1.0, 1.0, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
+	tween.interpolate_property(glow, "modulate:a", 1.0, 0.6, 1.0, Tween.TRANS_SINE, Tween.EASE_IN_OUT, 1.0)
+	tween.repeat = true
+	tween.start()
 
 func _point_in_star(point: Vector2, verts: Array) -> bool:
 	var n = verts.size()
@@ -135,8 +194,8 @@ func _pulse_goal() -> void:
 		return
 	var tween = Tween.new()
 	_goal_sprite.add_child(tween)
-	tween.interpolate_property(_goal_sprite, "scale", Vector2(0.9, 0.9), Vector2(1.15, 1.15), 0.8, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
-	tween.interpolate_property(_goal_sprite, "scale", Vector2(1.15, 1.15), Vector2(0.9, 0.9), 0.8, Tween.TRANS_SINE, Tween.EASE_IN_OUT, 0.8)
+	tween.interpolate_property(_goal_sprite, "scale", Vector2(1.1, 1.1), Vector2(1.35, 1.35), 0.8, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
+	tween.interpolate_property(_goal_sprite, "scale", Vector2(1.35, 1.35), Vector2(1.1, 1.1), 0.8, Tween.TRANS_SINE, Tween.EASE_IN_OUT, 0.8)
 	tween.repeat = true
 	tween.start()
 
