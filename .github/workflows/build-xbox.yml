@@ -20,10 +20,11 @@ jobs:
         shell: pwsh
         run: |
           $url = "https://github.com/godotengine/godot/releases/download/${{ env.GODOT_VERSION }}/Godot_v${{ env.GODOT_VERSION }}_win64.exe.zip"
-          Write-Output "Downloading Godot from $url"
+          Write-Output "Downloading Godot..."
           Invoke-WebRequest -Uri $url -OutFile C:\godot.zip
           Expand-Archive C:\godot.zip -DestinationPath C:\godot
-          Write-Output "Godot ready at C:\godot"
+          Get-ChildItem C:\godot
+          Write-Output "Godot ready"
 
       - name: Install Export Templates
         shell: pwsh
@@ -42,7 +43,7 @@ jobs:
       - name: Generate UWP Export Preset
         shell: pwsh
         run: |
-          $preset = @"
+          Set-Content -Path export_presets.cfg -Encoding UTF8 -Value @"
           [preset.0]
 
           name="UWP"
@@ -78,42 +79,100 @@ jobs:
           tiles/show_name_on_square310x310=false
           images/background_color="transparent"
           "@
-          $preset | Set-Content -Path export_presets.cfg -Encoding UTF8
-          Write-Output "Export preset created"
+          Write-Output "--- export_presets.cfg contents ---"
+          Get-Content export_presets.cfg
+          Write-Output "--- end ---"
 
       - name: Import Project Resources
         shell: pwsh
+        timeout-minutes: 5
         run: |
-          Write-Output "Running Godot editor to import resources..."
           $godot = "C:\godot\Godot_v${{ env.GODOT_VERSION }}_win64.exe"
-          $proc = Start-Process -FilePath $godot -ArgumentList "--editor", "--quit", "--path", "${{ github.workspace }}" -PassThru
-          $finished = $proc | Wait-Process -Timeout 180 -ErrorAction SilentlyContinue -PassThru
+          $workspace = "${{ github.workspace }}"
+          $logFile = "$workspace\godot_import.log"
+
+          Write-Output "Running Godot editor to import resources (--no-window)..."
+          $proc = Start-Process -FilePath $godot `
+            -ArgumentList "--no-window", "--editor", "--quit", "--path", $workspace `
+            -PassThru -NoNewWindow `
+            -RedirectStandardOutput $logFile `
+            -RedirectStandardError "$workspace\godot_import_err.log"
+
+          $proc | Wait-Process -Timeout 120 -ErrorAction SilentlyContinue
           if (!$proc.HasExited) {
-            Write-Output "Import timed out after 180s, killing..."
+            Write-Output "Import timed out after 120s, killing..."
             $proc.Kill()
+            Start-Sleep -Seconds 2
           } else {
-            Write-Output "Import exited with code $($proc.ExitCode)"
+            Write-Output "Import exited with code: $($proc.ExitCode)"
           }
-          Start-Sleep -Seconds 3
+
+          Write-Output "--- Import stdout ---"
+          if (Test-Path $logFile) { Get-Content $logFile | Select-Object -Last 30 }
+          Write-Output "--- Import stderr ---"
+          if (Test-Path "$workspace\godot_import_err.log") { Get-Content "$workspace\godot_import_err.log" | Select-Object -Last 30 }
+
           if (Test-Path ".import") {
             $count = (Get-ChildItem .import -Recurse -File).Count
             Write-Output "Imported $count resource files"
           } else {
-            Write-Warning "No .import directory found - resources may not have imported"
+            Write-Warning "No .import directory - trying a second import run..."
+            $proc2 = Start-Process -FilePath $godot `
+              -ArgumentList "--no-window", "--editor", "--quit", "--path", $workspace `
+              -PassThru -NoNewWindow `
+              -RedirectStandardOutput "$workspace\godot_import2.log" `
+              -RedirectStandardError "$workspace\godot_import2_err.log"
+            $proc2 | Wait-Process -Timeout 120 -ErrorAction SilentlyContinue
+            if (!$proc2.HasExited) { $proc2.Kill(); Start-Sleep -Seconds 2 }
+            Write-Output "--- Second import stdout ---"
+            if (Test-Path "$workspace\godot_import2.log") { Get-Content "$workspace\godot_import2.log" | Select-Object -Last 30 }
+            if (Test-Path ".import") {
+              $count = (Get-ChildItem .import -Recurse -File).Count
+              Write-Output "Second run imported $count resource files"
+            } else {
+              Write-Warning "Still no .import directory after second run"
+            }
           }
 
       - name: Export UWP Package
         shell: pwsh
+        timeout-minutes: 5
         run: |
           New-Item -ItemType Directory -Path build -Force | Out-Null
           $godot = "C:\godot\Godot_v${{ env.GODOT_VERSION }}_win64.exe"
-          $output = "${{ github.workspace }}\build\PawPatrolMaze.appx"
+          $workspace = "${{ github.workspace }}"
+          $output = "$workspace\build\PawPatrolMaze.appx"
+          $logFile = "$workspace\godot_export.log"
+
           Write-Output "Exporting UWP package..."
-          & $godot --path "${{ github.workspace }}" --export "UWP" $output
+          $proc = Start-Process -FilePath $godot `
+            -ArgumentList "--no-window", "--path", $workspace, "--export", "UWP", $output `
+            -PassThru -NoNewWindow `
+            -RedirectStandardOutput $logFile `
+            -RedirectStandardError "$workspace\godot_export_err.log"
+
+          $proc | Wait-Process -Timeout 180 -ErrorAction SilentlyContinue
+          if (!$proc.HasExited) {
+            Write-Output "Export timed out, killing..."
+            $proc.Kill()
+            Start-Sleep -Seconds 2
+          } else {
+            Write-Output "Export exited with code: $($proc.ExitCode)"
+          }
+
+          Write-Output "--- Export stdout ---"
+          if (Test-Path $logFile) { Get-Content $logFile }
+          Write-Output "--- Export stderr ---"
+          if (Test-Path "$workspace\godot_export_err.log") { Get-Content "$workspace\godot_export_err.log" }
+
           if (Test-Path $output) {
             $size = [math]::Round((Get-Item $output).Length / 1MB, 2)
             Write-Output "Export successful: $size MB"
           } else {
+            Write-Output "--- Files in build/ ---"
+            Get-ChildItem build -ErrorAction SilentlyContinue
+            Write-Output "--- Files in workspace root ---"
+            Get-ChildItem $workspace -Filter "*.appx" -ErrorAction SilentlyContinue
             Write-Error "Export failed - no .appx file produced"
             exit 1
           }
@@ -129,12 +188,10 @@ jobs:
           New-Item -ItemType Directory -Path $extractDir -Force | Out-Null
           New-Item -ItemType Directory -Path $toolsDir -Force | Out-Null
 
-          # Download ANGLE DLLs (required for UWP graphics)
           Write-Output "Downloading ANGLE DLLs..."
           Invoke-WebRequest -Uri "https://globalcdn.nuget.org/packages/angle.windowsstore.2.1.13.nupkg" -OutFile "$env:TEMP\angle.zip"
           Expand-Archive "$env:TEMP\angle.zip" -DestinationPath $toolsDir -Force
 
-          # Download Windows SDK build tools (makeappx, signtool)
           Write-Output "Downloading SDK build tools..."
           Invoke-WebRequest -Uri "https://globalcdn.nuget.org/packages/microsoft.windows.sdk.buildtools.10.0.22621.756.nupkg" -OutFile "$env:TEMP\sdk.zip"
           Expand-Archive "$env:TEMP\sdk.zip" -DestinationPath $toolsDir -Force
@@ -149,17 +206,14 @@ jobs:
           }
           Write-Output "All tools ready"
 
-          # Extract the APPX (it's a ZIP internally)
           Write-Output "Extracting APPX for repackaging..."
           $appxZip = "$appxFile.zip"
           Rename-Item $appxFile $appxZip -Force
           Expand-Archive $appxZip -DestinationPath $extractDir -Force
 
-          # Copy ANGLE DLLs into the package
           Copy-Item $libEGL $extractDir -Force
           Copy-Item $libGLES $extractDir -Force
 
-          # Repackage with makeappx
           Write-Output "Repackaging with makeappx..."
           & $makeappx pack /d $extractDir /p $appxFile /o
           if (!(Test-Path $appxFile)) {
@@ -170,7 +224,6 @@ jobs:
           Remove-Item $appxZip -Force -ErrorAction SilentlyContinue
           Remove-Item $extractDir -Recurse -Force
 
-          # Create self-signed certificate
           Write-Output "Creating self-signed certificate for CN=${{ env.PUBLISHER_NAME }}..."
           $securePass = ConvertTo-SecureString -String "${{ env.CERT_PASS }}" -AsPlainText -Force
           $cert = New-SelfSignedCertificate `
@@ -184,7 +237,6 @@ jobs:
           $certFile = "$workDir\cert.pfx"
           Export-PfxCertificate -FilePath $certFile -Password $securePass -Cert $cert | Out-Null
 
-          # Sign the APPX
           Write-Output "Signing APPX..."
           & $signtool sign /fd SHA256 /a /f $certFile /p "${{ env.CERT_PASS }}" $appxFile
           if ($LASTEXITCODE -ne 0) {
