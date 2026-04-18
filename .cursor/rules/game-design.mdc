@@ -1,0 +1,52 @@
+---
+description: Core game design rules for Paw Patrol Maze Adventure (4-year-old target)
+globs:
+  - "**/*.gd"
+  - "**/*.tscn"
+alwaysApply: true
+---
+
+# Game Design Rules
+
+## Target Audience
+- 4-year-old child (Tom)
+- Cannot read
+- Limited fine motor skills
+- Short attention span (5-10 minutes)
+
+## Core Mechanic
+- Simple 2D top-down mazes with wide paths
+- Joystick/D-pad movement (left stick or arrow keys)
+- A button to confirm/interact
+- 3-6 decision points per maze maximum
+
+## Design Principles
+- NO failure state, NO enemies, NO timers, NO health
+- Dead ends have fun surprises (collectibles, animations)
+- Wrong turns reward curiosity, never punish
+- Gentle hints after 5-8 seconds of inactivity
+- Constant positive feedback (sounds, sparkles, praise)
+- Every level ends with celebration
+
+## Language Rule
+- All in-game dialogue must be in Russian
+- Menu text and debug/test text can be in English
+
+## Visual Rules
+- Top-down or angled top-down camera
+- Wide, readable paths with rounded corners
+- Strong contrast between paths and walls
+- Large goal object visible from maze sections
+- Bright, warm, saturated colors
+- No dark shadows or scary spaces
+
+## Audio Rules
+- Upbeat, playful background music
+- Positive sound effects only
+- Short voice lines in Russian
+- No buzzers, alarms, or negative sounds
+
+## Maze Structure
+- 7 missions across 6 themed zones
+- Each mission: intro → pup select → maze → collectibles → goal → celebration
+- Progress is horizontal (new scenery, not harder difficulty)
