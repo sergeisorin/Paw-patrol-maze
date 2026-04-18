@@ -60,6 +60,13 @@ func _build_ui() -> void:
 	_play_button.connect("pressed", self, "_on_play_pressed")
 	vbox.add_child(_play_button)
 
+	var restart_btn = Button.new()
+	restart_btn.text = "RESTART ALL LEVELS"
+	restart_btn.rect_min_size = Vector2(400, 80)
+	restart_btn.add_font_override("font", GameManager.make_font(36))
+	restart_btn.connect("pressed", self, "_on_restart_all_pressed")
+	vbox.add_child(restart_btn)
+
 	_play_button.grab_focus()
 
 	var spacer2 = Control.new()
@@ -79,6 +86,17 @@ func _build_ui() -> void:
 	badges_label.add_font_override("font", GameManager.make_font(22, false))
 	badges_label.add_color_override("font_color", Color(0.9, 0.95, 1.0))
 	list_panel.add_child(badges_label)
+
+	var spacer_quit = Control.new()
+	spacer_quit.rect_min_size = Vector2(0, 16)
+	vbox.add_child(spacer_quit)
+
+	var quit_btn = Button.new()
+	quit_btn.text = "QUIT"
+	quit_btn.rect_min_size = Vector2(400, 64)
+	quit_btn.add_font_override("font", GameManager.make_font(28))
+	quit_btn.connect("pressed", self, "_on_quit_pressed")
+	vbox.add_child(quit_btn)
 
 func _make_text_panel() -> PanelContainer:
 	var panel = PanelContainer.new()
@@ -152,6 +170,13 @@ func _on_play_pressed() -> void:
 	if GameManager.current_mission >= GameManager.mission_data.size():
 		GameManager.reset_game()
 	MissionManager.load_mission(GameManager.current_mission)
+
+func _on_restart_all_pressed() -> void:
+	GameManager.reset_game()
+	MissionManager.load_mission(0)
+
+func _on_quit_pressed() -> void:
+	get_tree().quit()
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("confirm") and _play_button and _play_button.has_focus():
